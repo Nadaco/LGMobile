@@ -413,6 +413,10 @@ let state = {
   winner: null
 };
 
+function normalizeName(name){
+  return (name || '').trim().toLowerCase();
+}
+
 /* ---------- persistence (localStorage) ---------- */
 const STORAGE_KEYS = { history: 'lg_history_v1', names: 'lg_recent_names_v1' };
 
@@ -434,7 +438,7 @@ function rememberNames(players){
   const merged = [...players.map(p => p.name), ...existing];
   const seen = new Set();
   const deduped = merged.filter(n => {
-    const key = n.trim().toLowerCase();
+    const key = normalizeName(n);
     if(!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -660,6 +664,7 @@ function tplDistribute(){
     <datalist id="recentNames">
       ${getRecentNames().map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}
     </datalist>
+    <div class="sub" id="nameError" style="display:none; color:var(--accent-blood-bright); margin-top:8px;">Ce nom est déjà pris dans cette partie, choisissez-en un autre.</div>
     <div style="height:18px"></div>
     <button class="btn btn-primary" id="confirm-name" disabled>${isLast ? 'Valider et commencer la nuit' : 'Valider et passer au joueur suivant'}</button>
   `;
@@ -933,9 +938,17 @@ function wire(){
   if(cardFlip) cardFlip.onclick = () => set({revealed:true});
   const nameInput = app.querySelector('#nameInput');
   const confirmName = app.querySelector('#confirm-name');
+  const nameError = app.querySelector('#nameError');
+  const isNameTaken = (name) => {
+    const norm = normalizeName(name);
+    return norm.length > 0 && state.players.some(p => normalizeName(p.name) === norm);
+  };
   if(nameInput){
     nameInput.oninput = () => {
-      confirmName.disabled = nameInput.value.trim().length === 0;
+      const trimmed = nameInput.value.trim();
+      const taken = isNameTaken(trimmed);
+      confirmName.disabled = trimmed.length === 0 || taken;
+      if(nameError) nameError.style.display = taken ? 'block' : 'none';
       state.nameInputVal = nameInput.value;
     };
     nameInput.focus();
@@ -943,6 +956,10 @@ function wire(){
   if(confirmName) confirmName.onclick = () => {
     const name = (nameInput.value || '').trim();
     if(!name) return;
+    if(isNameTaken(name)){
+      if(nameError) nameError.style.display = 'block';
+      return;
+    }
     const role = state.deck[state.distributeIndex];
     const newPlayers = [...state.players, {id: state.distributeIndex, name, role, alive:true, roleRevealed:false}];
     const nextIndex = state.distributeIndex + 1;
