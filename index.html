@@ -2,8 +2,21 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Loup-Garou</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d0f24">
+<meta name="background-color" content="#08091a">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Loup-Garou">
+<meta name="description" content="Jeu de Loup-Garou en local, un téléphone qui passe entre les joueurs.">
+<meta name="format-detection" content="telephone=no">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap');
 
@@ -38,9 +51,10 @@ body{
   width:100%;
   max-width:440px;
   min-height:100vh;
+  min-height:100dvh;
   display:flex;
   flex-direction:column;
-  padding:28px 22px 34px;
+  padding:calc(28px + env(safe-area-inset-top)) calc(22px + env(safe-area-inset-right)) calc(34px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
   position:relative;
 }
 
@@ -316,7 +330,7 @@ label.field-label{
 /* ---- reveal-all floating button + overlay ---- */
 .reveal-fab{
   position:fixed;
-  left:18px; bottom:18px;
+  left:calc(18px + env(safe-area-inset-left)); bottom:calc(18px + env(safe-area-inset-bottom));
   width:52px; height:52px;
   border-radius:50%;
   border:1px solid var(--border);
@@ -398,6 +412,66 @@ let state = {
   showAllCards: false,
   winner: null
 };
+
+/* ---------- persistence (localStorage) ---------- */
+const STORAGE_KEYS = { history: 'lg_history_v1', names: 'lg_recent_names_v1' };
+
+function loadJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+function saveJSON(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){ /* storage unavailable, ignore */ }
+}
+
+function getHistory(){ return loadJSON(STORAGE_KEYS.history, []); }
+function getRecentNames(){ return loadJSON(STORAGE_KEYS.names, []); }
+
+function rememberNames(players){
+  const existing = getRecentNames();
+  const merged = [...players.map(p => p.name), ...existing];
+  const seen = new Set();
+  const deduped = merged.filter(n => {
+    const key = n.trim().toLowerCase();
+    if(!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  saveJSON(STORAGE_KEYS.names, deduped.slice(0, 40));
+}
+
+function recordGameResult(players, winner, round){
+  const history = getHistory();
+  history.unshift({
+    date: new Date().toISOString(),
+    round,
+    winner,
+    players: players.map(p => ({ name: p.name, role: p.role }))
+  });
+  saveJSON(STORAGE_KEYS.history, history.slice(0, 200));
+}
+
+function computePlayerStats(){
+  const history = getHistory();
+  const stats = {}; // name -> {games, winsVillage, winsLoup}
+  history.forEach(g => {
+    g.players.forEach(p => {
+      if(!stats[p.name]) stats[p.name] = { games:0, winsVillage:0, winsLoup:0 };
+      stats[p.name].games++;
+      if(g.winner === 'villageois' && p.role === 'villageois') stats[p.name].winsVillage++;
+      if(g.winner === 'loups-garous' && p.role === 'loup-garou') stats[p.name].winsLoup++;
+    });
+  });
+  return Object.entries(stats)
+    .map(([name, s]) => ({ name, ...s, wins: s.winsVillage + s.winsLoup }))
+    .sort((a,b) => b.games - a.games || b.wins - a.wins);
+}
+
+function clearHistory(){
+  saveJSON(STORAGE_KEYS.history, []);
+}
 
 function shuffle(arr){
   const a = arr.slice();
@@ -491,6 +565,45 @@ function tplSetup(){
     <div class="subtitle">Chaque joueur passera le téléphone à son tour pour piocher sa carte et inscrire son nom.</div>
 
     <button class="btn btn-primary" id="start-distribute">Commencer la distribution des rôles</button>
+    ${getHistory().length > 0 ? `<button class="btn btn-ghost" id="view-stats" style="margin-top:12px;">Statistiques &amp; historique</button>` : ''}
+  `;
+}
+
+function tplStats(){
+  const stats = computePlayerStats();
+  const history = getHistory();
+  return `
+    ${moonSvg('calm')}
+    <div class="eyebrow">Sur cet appareil</div>
+    <h2 class="stitle">Statistiques</h2>
+    <div class="subtitle">${history.length} partie${history.length>1?'s':''} enregistrée${history.length>1?'s':''} localement.</div>
+
+    <label class="field-label">Classement des joueurs</label>
+    <div class="roster">
+      ${stats.length ? stats.map(s => `
+        <div class="ritem">
+          <span>${escapeHtml(s.name)}</span>
+          <span class="sub" style="margin-top:0;">${s.games} partie${s.games>1?'s':''} · ${s.wins} victoire${s.wins>1?'s':''}</span>
+        </div>
+      `).join('') : `<div class="ritem"><span class="sub" style="margin-top:0;">Aucune donnée pour le moment</span></div>`}
+    </div>
+
+    <label class="field-label">Dernières parties</label>
+    <div class="roster">
+      ${history.slice(0,10).map(g => {
+        const d = new Date(g.date);
+        const dateStr = d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'});
+        return `
+        <div class="ritem">
+          <span>${dateStr} · ${g.players.length} joueurs · ${g.round} nuit${g.round>1?'s':''}</span>
+          <span class="rolebadge ${g.winner==='loups-garous'?'loup':'villageois'}">${g.winner==='loups-garous'?'Loups':'Village'}</span>
+        </div>
+      `;}).join('')}
+    </div>
+
+    <button class="btn btn-ghost" id="clear-history">Effacer l'historique</button>
+    <div style="height:10px"></div>
+    <button class="btn btn-primary" id="back-to-setup">Retour</button>
   `;
 }
 
@@ -543,7 +656,10 @@ function tplDistribute(){
       </div>
     </div>
     <label class="field-label">Votre nom</label>
-    <input type="text" id="nameInput" placeholder="Entrez votre nom" autocomplete="off" value="${state.nameInputVal||''}">
+    <input type="text" id="nameInput" placeholder="Entrez votre nom" autocomplete="off" value="${state.nameInputVal||''}" list="recentNames">
+    <datalist id="recentNames">
+      ${getRecentNames().map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}
+    </datalist>
     <div style="height:18px"></div>
     <button class="btn btn-primary" id="confirm-name" disabled>${isLast ? 'Valider et commencer la nuit' : 'Valider et passer au joueur suivant'}</button>
   `;
@@ -754,6 +870,7 @@ function render(){
   let html = '';
   switch(state.phase){
     case 'setup': html = tplSetup(); break;
+    case 'stats': html = tplStats(); break;
     case 'distribute': html = tplDistribute(); break;
     case 'night_sleep': html = tplNightSleep(); break;
     case 'night_wolves': html = tplNightWolves(); break;
@@ -791,6 +908,17 @@ function wire(){
   if(wPlus) wPlus.onclick = () => {
     set({numWolves: Math.min(maxWolves(state.numPlayers), state.numWolves+1)});
   };
+  const viewStats = app.querySelector('#view-stats');
+  if(viewStats) viewStats.onclick = () => set({phase:'stats'});
+  const backToSetup = app.querySelector('#back-to-setup');
+  if(backToSetup) backToSetup.onclick = () => set({phase:'setup'});
+  const clearHistoryBtn = app.querySelector('#clear-history');
+  if(clearHistoryBtn) clearHistoryBtn.onclick = () => {
+    if(confirm("Effacer tout l'historique des parties sur cet appareil ?")){
+      clearHistory();
+      render();
+    }
+  };
   const startDistribute = app.querySelector('#start-distribute');
   if(startDistribute) startDistribute.onclick = () => {
     const roles = shuffle([
@@ -819,6 +947,7 @@ function wire(){
     const newPlayers = [...state.players, {id: state.distributeIndex, name, role, alive:true, roleRevealed:false}];
     const nextIndex = state.distributeIndex + 1;
     if(nextIndex >= state.numPlayers){
+      rememberNames(newPlayers);
       set({players:newPlayers, phase:'night_sleep', round:1, distributeIndex:nextIndex, revealed:false, nameInputVal:''});
     } else {
       set({players:newPlayers, distributeIndex:nextIndex, revealed:false, nameInputVal:''});
@@ -851,6 +980,7 @@ function wire(){
     const players = state.players.map(p => p.id === state.lastVictimId ? {...p, roleRevealed:true} : p);
     const winner = checkWinner(players);
     if(winner){
+      recordGameResult(players, winner, state.round);
       set({players, phase:'gameover', winner});
     } else {
       set({players, phase:'day_vote', dayTargetId:undefined});
@@ -884,6 +1014,7 @@ function wire(){
       : state.players;
     const winner = checkWinner(players);
     if(winner){
+      recordGameResult(players, winner, state.round);
       set({players, phase:'gameover', winner});
     } else {
       set({players, phase:'night_sleep', round: state.round+1, targetId:null});
@@ -906,6 +1037,14 @@ function wire(){
 }
 
 render();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {
+      /* offline support unavailable, app still works online */
+    });
+  });
+}
 </script>
 </body>
 </html>

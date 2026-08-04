@@ -1,0 +1,42 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#262c5e"/>
+      <stop offset="55%" stop-color="#0d0f24"/>
+      <stop offset="100%" stop-color="#08091a"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="42%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#ffe9b8"/>
+      <stop offset="55%" stop-color="#ecc873"/>
+      <stop offset="100%" stop-color="#d9a94e"/>
+    </radialGradient>
+    <linearGradient id="eye" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0574d"/>
+      <stop offset="100%" stop-color="#c1453d"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- moon -->
+  <circle cx="256" cy="230" r="118" fill="url(#moon)" filter="url(#glow)"/>
+  <!-- crescent shadow bite -->
+  <circle cx="304" cy="196" r="102" fill="#0d0f24"/>
+
+  <!-- wolf-eye glints inside the shadowed part of the moon -->
+  <g filter="url(#glow)">
+    <ellipse cx="230" cy="252" rx="12" ry="18" fill="url(#eye)" transform="rotate(-18 230 252)"/>
+    <ellipse cx="278" cy="252" rx="12" ry="18" fill="url(#eye)" transform="rotate(18 278 252)"/>
+  </g>
+
+  <!-- ground silhouette -->
+  <path d="M0 420 Q 128 372 256 400 T 512 388 V512 H0 Z" fill="#08091a"/>
+  <path d="M0 432 Q 140 396 256 416 T 512 402 V512 H0 Z" fill="#12153a"/>
+</svg>
