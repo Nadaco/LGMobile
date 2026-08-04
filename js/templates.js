@@ -215,7 +215,6 @@ ${targets
   <div class="pitem ${state.targetId === p.id ? "selected" : ""}" data-target="${p.id}">
     <div class="dot"></div>
     <div class="name">${escapeHtml(p.name)}</div>
-    ${p.role === "loup-garou" ? `<span class="rolebadge loup">Loup</span>` : ""}
   </div>
 `,
   )
