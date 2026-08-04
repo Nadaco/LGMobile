@@ -1,0 +1,517 @@
+/**
+ * style.css — Feuille de style unique de l'application.
+ * Thème "nuit de pleine lune" : fond bleu nuit, accents sang/or.
+ * Variables de couleur en haut (:root) pour tout ajuster facilement.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap");
+
+:root {
+  --bg-night: #0d0f24;
+  --bg-panel: #171b3a;
+  --bg-panel-2: #1f2450;
+  --accent-blood: #c1453d;
+  --accent-blood-bright: #e0574d;
+  --accent-gold: #d9a94e;
+  --text-light: #f0eae2;
+  --text-muted: #8a90b8;
+  --border: #2c3163;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: "Work Sans", sans-serif;
+  background:
+    radial-gradient(ellipse at 50% -10%, #262c5e 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-night) 0%, #08091a 100%);
+  color: var(--text-light);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+}
+
+#app {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(28px + env(safe-area-inset-top))
+    calc(22px + env(safe-area-inset-right))
+    calc(34px + env(safe-area-inset-bottom))
+    calc(22px + env(safe-area-inset-left));
+  position: relative;
+}
+
+/* ---- signature: the moon ---- */
+.moon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.moon-svg {
+  width: 64px;
+  height: 64px;
+  transition: filter 0.8s ease;
+}
+.moon-body {
+  transition: fill 1s ease;
+}
+.moon-glow-night {
+  filter: drop-shadow(0 0 14px rgba(230, 230, 255, 0.55));
+}
+.moon-glow-blood {
+  filter: drop-shadow(0 0 16px rgba(193, 69, 61, 0.75));
+}
+.moon-glow-gold {
+  filter: drop-shadow(0 0 16px rgba(217, 169, 78, 0.7));
+}
+.moon-glow-calm {
+  filter: drop-shadow(0 0 8px rgba(180, 185, 220, 0.35));
+}
+
+.eyebrow {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+h1.title {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  text-align: center;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  margin: 0 0 26px;
+  color: var(--text-light);
+}
+h2.stitle {
+  font-family: "Cinzel", serif;
+  font-weight: 600;
+  font-size: 20px;
+  text-align: center;
+  letter-spacing: 0.02em;
+  margin: 0 0 6px;
+}
+.subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14.5px;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+.panel {
+  background: linear-gradient(
+    180deg,
+    var(--bg-panel) 0%,
+    var(--bg-panel-2) 100%
+  );
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 16px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.row + .row {
+  margin-top: 16px;
+}
+.row .label {
+  font-size: 15px;
+  font-weight: 500;
+}
+.row .sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.stepper button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #12153080;
+  color: var(--text-light);
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.stepper button:active {
+  transform: scale(0.94);
+}
+.stepper .val {
+  font-family: "Cinzel", serif;
+  font-size: 20px;
+  min-width: 28px;
+  text-align: center;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 15px 18px;
+  border-radius: 13px;
+  border: none;
+  font-family: "Work Sans", sans-serif;
+  font-weight: 600;
+  font-size: 15.5px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-align: center;
+}
+.btn:active {
+  transform: scale(0.985);
+}
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--accent-blood-bright),
+    var(--accent-blood)
+  );
+  color: #fff;
+  box-shadow: 0 8px 20px -8px rgba(193, 69, 61, 0.6);
+}
+.btn-primary:disabled {
+  background: #3a3f66;
+  color: #767ba6;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-light);
+  border: 1px solid var(--border);
+}
+.btn-gold {
+  background: linear-gradient(135deg, #ecc873, var(--accent-gold));
+  color: #241a05;
+  box-shadow: 0 8px 20px -8px rgba(217, 169, 78, 0.55);
+}
+.spacer {
+  flex: 1;
+}
+.footer-btn {
+  margin-top: auto;
+}
+
+/* ---- card flip (role draw) ---- */
+.card-zone {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 22px;
+}
+.card-flip {
+  width: 190px;
+  height: 270px;
+  perspective: 1200px;
+}
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.3, 1);
+  transform-style: preserve-3d;
+}
+.card-flip.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border: 1px solid var(--border);
+}
+.card-front {
+  background: radial-gradient(circle at 50% 30%, #2a306b 0%, #14173a 70%);
+}
+.card-front .glyph {
+  font-size: 40px;
+  opacity: 0.85;
+  margin-bottom: 10px;
+}
+.card-front .hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+.card-back {
+  transform: rotateY(180deg);
+}
+.card-back.role-loup {
+  background: linear-gradient(160deg, #3a1414, #200a0a);
+}
+.card-back.role-villageois {
+  background: linear-gradient(160deg, #2a2c50, #171a3a);
+}
+.card-back .glyph {
+  font-size: 52px;
+  margin-bottom: 10px;
+}
+.card-back .rolename {
+  font-family: "Cinzel", serif;
+  font-size: 19px;
+  font-weight: 700;
+  text-align: center;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0f1230;
+  color: var(--text-light);
+  font-size: 16px;
+  font-family: "Work Sans", sans-serif;
+  outline: none;
+}
+input[type="text"]:focus {
+  border-color: var(--accent-gold);
+}
+label.field-label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin: 16px 0 8px;
+}
+
+.progress {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* player list (target selection / roster) */
+.plist {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 4px 0 18px;
+}
+.pitem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #12153080;
+  cursor: pointer;
+}
+.pitem.selected {
+  border-color: var(--accent-blood-bright);
+  background: linear-gradient(
+    135deg,
+    rgba(193, 69, 61, 0.22),
+    rgba(193, 69, 61, 0.08)
+  );
+}
+.pitem .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+.pitem.selected .dot {
+  background: var(--accent-blood-bright);
+}
+.pitem .name {
+  font-size: 15px;
+  font-weight: 500;
+}
+.pitem-none {
+  border-style: dashed;
+}
+.pitem-none .name {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.pitem-none.selected {
+  border-color: var(--accent-gold);
+  background: linear-gradient(
+    135deg,
+    rgba(217, 169, 78, 0.2),
+    rgba(217, 169, 78, 0.06)
+  );
+}
+.pitem-none.selected .dot {
+  background: var(--accent-gold);
+}
+.divider-label {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 2px 0 9px;
+}
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 4px 0 20px;
+}
+.roster .ritem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #12153080;
+  font-size: 14px;
+}
+.roster .ritem.dead {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.roster .rolebadge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rolebadge.loup {
+  background: rgba(193, 69, 61, 0.25);
+  color: #ff8f86;
+}
+.rolebadge.villageois {
+  background: rgba(120, 140, 220, 0.2);
+  color: #aab4ee;
+}
+
+.center-icon {
+  font-size: 52px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.fade-in {
+  animation: fadeIn 0.45s ease;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.winner-banner {
+  text-align: center;
+  font-family: "Cinzel", serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 10px 0 4px;
+}
+
+/* ---- reveal-all floating button + overlay ---- */
+.reveal-fab {
+  position: fixed;
+  left: calc(18px + env(safe-area-inset-left));
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #171b3ae0;
+  backdrop-filter: blur(6px);
+  color: var(--text-light);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 40;
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.6);
+}
+.reveal-fab:active {
+  transform: scale(0.93);
+}
+
+.reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 7, 20, 0.88);
+  backdrop-filter: blur(3px);
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.reveal-sheet {
+  width: 100%;
+  max-width: 440px;
+  max-height: 82vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, var(--bg-panel) 0%, #10132c 100%);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 22px 22px 0 0;
+  padding: 22px 20px 26px;
+}
+.reveal-sheet h2.stitle {
+  margin-bottom: 2px;
+}
+.reveal-sheet .subtitle {
+  margin-bottom: 18px;
+}
+.reveal-close {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-light);
+  font-family: "Work Sans", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
