@@ -1,543 +1,744 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Loup-Garou</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Loup-Garou</title>
 
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0d0f24">
-<meta name="background-color" content="#08091a">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Loup-Garou">
-<meta name="description" content="Jeu de Loup-Garou en local, un téléphone qui passe entre les joueurs.">
-<meta name="format-detection" content="telephone=no">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap');
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#0d0f24" />
+    <meta name="background-color" content="#08091a" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="icons/favicon-32.png"
+    />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Loup-Garou" />
+    <meta
+      name="description"
+      content="Jeu de Loup-Garou en local, un téléphone qui passe entre les joueurs."
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Work+Sans:wght@400;500;600;700&display=swap");
 
-:root{
-  --bg-night:#0d0f24;
-  --bg-panel:#171b3a;
-  --bg-panel-2:#1f2450;
-  --accent-blood:#c1453d;
-  --accent-blood-bright:#e0574d;
-  --accent-gold:#d9a94e;
-  --text-light:#f0eae2;
-  --text-muted:#8a90b8;
-  --border:#2c3163;
-}
+      :root {
+        --bg-night: #0d0f24;
+        --bg-panel: #171b3a;
+        --bg-panel-2: #1f2450;
+        --accent-blood: #c1453d;
+        --accent-blood-bright: #e0574d;
+        --accent-gold: #d9a94e;
+        --text-light: #f0eae2;
+        --text-muted: #8a90b8;
+        --border: #2c3163;
+      }
 
-*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{height:100%; margin:0;}
-body{
-  font-family:'Work Sans', sans-serif;
-  background:
-    radial-gradient(ellipse at 50% -10%, #262c5e 0%, transparent 55%),
-    linear-gradient(180deg, var(--bg-night) 0%, #08091a 100%);
-  color:var(--text-light);
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow-x:hidden;
-}
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        font-family: "Work Sans", sans-serif;
+        background:
+          radial-gradient(ellipse at 50% -10%, #262c5e 0%, transparent 55%),
+          linear-gradient(180deg, var(--bg-night) 0%, #08091a 100%);
+        color: var(--text-light);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow-x: hidden;
+      }
 
-#app{
-  width:100%;
-  max-width:440px;
-  min-height:100vh;
-  min-height:100dvh;
-  display:flex;
-  flex-direction:column;
-  padding:calc(28px + env(safe-area-inset-top)) calc(22px + env(safe-area-inset-right)) calc(34px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
-  position:relative;
-}
+      #app {
+        width: 100%;
+        max-width: 440px;
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        padding: calc(28px + env(safe-area-inset-top))
+          calc(22px + env(safe-area-inset-right))
+          calc(34px + env(safe-area-inset-bottom))
+          calc(22px + env(safe-area-inset-left));
+        position: relative;
+      }
 
-/* ---- signature: the moon ---- */
-.moon-wrap{
-  display:flex;
-  justify-content:center;
-  margin-bottom:10px;
-}
-.moon-svg{ width:64px; height:64px; transition: filter .8s ease; }
-.moon-body{ transition: fill 1s ease; }
-.moon-glow-night   { filter: drop-shadow(0 0 14px rgba(230,230,255,.55)); }
-.moon-glow-blood   { filter: drop-shadow(0 0 16px rgba(193,69,61,.75)); }
-.moon-glow-gold    { filter: drop-shadow(0 0 16px rgba(217,169,78,.7)); }
-.moon-glow-calm    { filter: drop-shadow(0 0 8px rgba(180,185,220,.35)); }
+      /* ---- signature: the moon ---- */
+      .moon-wrap {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+      .moon-svg {
+        width: 64px;
+        height: 64px;
+        transition: filter 0.8s ease;
+      }
+      .moon-body {
+        transition: fill 1s ease;
+      }
+      .moon-glow-night {
+        filter: drop-shadow(0 0 14px rgba(230, 230, 255, 0.55));
+      }
+      .moon-glow-blood {
+        filter: drop-shadow(0 0 16px rgba(193, 69, 61, 0.75));
+      }
+      .moon-glow-gold {
+        filter: drop-shadow(0 0 16px rgba(217, 169, 78, 0.7));
+      }
+      .moon-glow-calm {
+        filter: drop-shadow(0 0 8px rgba(180, 185, 220, 0.35));
+      }
 
-.eyebrow{
-  text-align:center;
-  font-size:11px;
-  letter-spacing:.22em;
-  text-transform:uppercase;
-  color:var(--text-muted);
-  margin-bottom:4px;
-}
-h1.title{
-  font-family:'Cinzel', serif;
-  font-weight:700;
-  text-align:center;
-  font-size:28px;
-  letter-spacing:.04em;
-  margin:0 0 26px;
-  color:var(--text-light);
-}
-h2.stitle{
-  font-family:'Cinzel', serif;
-  font-weight:600;
-  font-size:20px;
-  text-align:center;
-  letter-spacing:.02em;
-  margin:0 0 6px;
-}
-.subtitle{
-  text-align:center;
-  color:var(--text-muted);
-  font-size:14.5px;
-  line-height:1.5;
-  margin:0 0 24px;
-}
+      .eyebrow {
+        text-align: center;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+      }
+      h1.title {
+        font-family: "Cinzel", serif;
+        font-weight: 700;
+        text-align: center;
+        font-size: 28px;
+        letter-spacing: 0.04em;
+        margin: 0 0 26px;
+        color: var(--text-light);
+      }
+      h2.stitle {
+        font-family: "Cinzel", serif;
+        font-weight: 600;
+        font-size: 20px;
+        text-align: center;
+        letter-spacing: 0.02em;
+        margin: 0 0 6px;
+      }
+      .subtitle {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 14.5px;
+        line-height: 1.5;
+        margin: 0 0 24px;
+      }
 
-.panel{
-  background:linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-panel-2) 100%);
-  border:1px solid var(--border);
-  border-radius:18px;
-  padding:22px;
-  margin-bottom:16px;
-}
+      .panel {
+        background: linear-gradient(
+          180deg,
+          var(--bg-panel) 0%,
+          var(--bg-panel-2) 100%
+        );
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 22px;
+        margin-bottom: 16px;
+      }
 
-.row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:14px;
-}
-.row + .row{ margin-top:16px; }
-.row .label{ font-size:15px; font-weight:500; }
-.row .sub{ font-size:12.5px; color:var(--text-muted); margin-top:2px; }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .row + .row {
+        margin-top: 16px;
+      }
+      .row .label {
+        font-size: 15px;
+        font-weight: 500;
+      }
+      .row .sub {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
 
-.stepper{
-  display:flex;
-  align-items:center;
-  gap:14px;
-}
-.stepper button{
-  width:38px; height:38px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:#12153080;
-  color:var(--text-light);
-  font-size:19px;
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer;
-}
-.stepper button:active{ transform:scale(.94); }
-.stepper .val{
-  font-family:'Cinzel', serif;
-  font-size:20px;
-  min-width:28px;
-  text-align:center;
-}
+      .stepper {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .stepper button {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: #12153080;
+        color: var(--text-light);
+        font-size: 19px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .stepper button:active {
+        transform: scale(0.94);
+      }
+      .stepper .val {
+        font-family: "Cinzel", serif;
+        font-size: 20px;
+        min-width: 28px;
+        text-align: center;
+      }
 
-.btn{
-  display:block;
-  width:100%;
-  padding:15px 18px;
-  border-radius:13px;
-  border:none;
-  font-family:'Work Sans', sans-serif;
-  font-weight:600;
-  font-size:15.5px;
-  letter-spacing:.01em;
-  cursor:pointer;
-  text-align:center;
-}
-.btn:active{ transform:scale(.985); }
-.btn-primary{
-  background:linear-gradient(135deg, var(--accent-blood-bright), var(--accent-blood));
-  color:#fff;
-  box-shadow:0 8px 20px -8px rgba(193,69,61,.6);
-}
-.btn-primary:disabled{
-  background:#3a3f66;
-  color:#767ba6;
-  box-shadow:none;
-  cursor:not-allowed;
-}
-.btn-ghost{
-  background:transparent;
-  color:var(--text-light);
-  border:1px solid var(--border);
-}
-.btn-gold{
-  background:linear-gradient(135deg, #ecc873, var(--accent-gold));
-  color:#241a05;
-  box-shadow:0 8px 20px -8px rgba(217,169,78,.55);
-}
-.spacer{ flex:1; }
-.footer-btn{ margin-top:auto; }
+      .btn {
+        display: block;
+        width: 100%;
+        padding: 15px 18px;
+        border-radius: 13px;
+        border: none;
+        font-family: "Work Sans", sans-serif;
+        font-weight: 600;
+        font-size: 15.5px;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        text-align: center;
+      }
+      .btn:active {
+        transform: scale(0.985);
+      }
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--accent-blood-bright),
+          var(--accent-blood)
+        );
+        color: #fff;
+        box-shadow: 0 8px 20px -8px rgba(193, 69, 61, 0.6);
+      }
+      .btn-primary:disabled {
+        background: #3a3f66;
+        color: #767ba6;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-light);
+        border: 1px solid var(--border);
+      }
+      .btn-gold {
+        background: linear-gradient(135deg, #ecc873, var(--accent-gold));
+        color: #241a05;
+        box-shadow: 0 8px 20px -8px rgba(217, 169, 78, 0.55);
+      }
+      .spacer {
+        flex: 1;
+      }
+      .footer-btn {
+        margin-top: auto;
+      }
 
-/* ---- card flip (role draw) ---- */
-.card-zone{
-  display:flex;
-  justify-content:center;
-  margin:14px 0 22px;
-}
-.card-flip{
-  width:190px; height:270px;
-  perspective:1200px;
-}
-.card-inner{
-  position:relative;
-  width:100%; height:100%;
-  transition: transform .7s cubic-bezier(.2,.8,.3,1);
-  transform-style:preserve-3d;
-}
-.card-flip.flipped .card-inner{ transform: rotateY(180deg); }
-.card-face{
-  position:absolute; inset:0;
-  border-radius:16px;
-  backface-visibility:hidden;
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
-  padding:18px;
-  border:1px solid var(--border);
-}
-.card-front{
-  background:
-    radial-gradient(circle at 50% 30%, #2a306b 0%, #14173a 70%);
-}
-.card-front .glyph{ font-size:40px; opacity:.85; margin-bottom:10px;}
-.card-front .hint{ font-size:12.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.14em; text-align:center;}
-.card-back{
-  transform: rotateY(180deg);
-}
-.card-back.role-loup{
-  background:linear-gradient(160deg, #3a1414, #200a0a);
-}
-.card-back.role-villageois{
-  background:linear-gradient(160deg, #2a2c50, #171a3a);
-}
-.card-back .glyph{ font-size:52px; margin-bottom:10px; }
-.card-back .rolename{
-  font-family:'Cinzel', serif;
-  font-size:19px;
-  font-weight:700;
-  text-align:center;
-}
+      /* ---- card flip (role draw) ---- */
+      .card-zone {
+        display: flex;
+        justify-content: center;
+        margin: 14px 0 22px;
+      }
+      .card-flip {
+        width: 190px;
+        height: 270px;
+        perspective: 1200px;
+      }
+      .card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.3, 1);
+        transform-style: preserve-3d;
+      }
+      .card-flip.flipped .card-inner {
+        transform: rotateY(180deg);
+      }
+      .card-face {
+        position: absolute;
+        inset: 0;
+        border-radius: 16px;
+        backface-visibility: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        border: 1px solid var(--border);
+      }
+      .card-front {
+        background: radial-gradient(circle at 50% 30%, #2a306b 0%, #14173a 70%);
+      }
+      .card-front .glyph {
+        font-size: 40px;
+        opacity: 0.85;
+        margin-bottom: 10px;
+      }
+      .card-front .hint {
+        font-size: 12.5px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        text-align: center;
+      }
+      .card-back {
+        transform: rotateY(180deg);
+      }
+      .card-back.role-loup {
+        background: linear-gradient(160deg, #3a1414, #200a0a);
+      }
+      .card-back.role-villageois {
+        background: linear-gradient(160deg, #2a2c50, #171a3a);
+      }
+      .card-back .glyph {
+        font-size: 52px;
+        margin-bottom: 10px;
+      }
+      .card-back .rolename {
+        font-family: "Cinzel", serif;
+        font-size: 19px;
+        font-weight: 700;
+        text-align: center;
+      }
 
-input[type=text]{
-  width:100%;
-  padding:14px 16px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:#0f1230;
-  color:var(--text-light);
-  font-size:16px;
-  font-family:'Work Sans', sans-serif;
-  outline:none;
-}
-input[type=text]:focus{ border-color: var(--accent-gold); }
-label.field-label{
-  display:block;
-  font-size:12.5px;
-  color:var(--text-muted);
-  text-transform:uppercase;
-  letter-spacing:.12em;
-  margin:16px 0 8px;
-}
+      input[type="text"] {
+        width: 100%;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #0f1230;
+        color: var(--text-light);
+        font-size: 16px;
+        font-family: "Work Sans", sans-serif;
+        outline: none;
+      }
+      input[type="text"]:focus {
+        border-color: var(--accent-gold);
+      }
+      label.field-label {
+        display: block;
+        font-size: 12.5px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin: 16px 0 8px;
+      }
 
-.progress{
-  text-align:center;
-  font-size:12.5px;
-  color:var(--text-muted);
-  letter-spacing:.1em;
-  text-transform:uppercase;
-  margin-bottom:8px;
-}
+      .progress {
+        text-align: center;
+        font-size: 12.5px;
+        color: var(--text-muted);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
 
-/* player list (target selection / roster) */
-.plist{ display:flex; flex-direction:column; gap:9px; margin:4px 0 18px;}
-.pitem{
-  display:flex; align-items:center; gap:12px;
-  padding:13px 15px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:#12153080;
-  cursor:pointer;
-}
-.pitem.selected{
-  border-color:var(--accent-blood-bright);
-  background:linear-gradient(135deg, rgba(193,69,61,.22), rgba(193,69,61,.08));
-}
-.pitem .dot{
-  width:9px; height:9px; border-radius:50%;
-  background:var(--text-muted);
-  flex-shrink:0;
-}
-.pitem.selected .dot{ background:var(--accent-blood-bright); }
-.pitem .name{ font-size:15px; font-weight:500; }
-.pitem-none{ border-style:dashed; }
-.pitem-none .name{ color:var(--text-muted); font-style:italic; }
-.pitem-none.selected{
-  border-color:var(--accent-gold);
-  background:linear-gradient(135deg, rgba(217,169,78,.2), rgba(217,169,78,.06));
-}
-.pitem-none.selected .dot{ background:var(--accent-gold); }
-.divider-label{
-  text-align:center; font-size:11.5px; color:var(--text-muted);
-  text-transform:uppercase; letter-spacing:.1em; margin:2px 0 9px;
-}
+      /* player list (target selection / roster) */
+      .plist {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        margin: 4px 0 18px;
+      }
+      .pitem {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 15px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #12153080;
+        cursor: pointer;
+      }
+      .pitem.selected {
+        border-color: var(--accent-blood-bright);
+        background: linear-gradient(
+          135deg,
+          rgba(193, 69, 61, 0.22),
+          rgba(193, 69, 61, 0.08)
+        );
+      }
+      .pitem .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--text-muted);
+        flex-shrink: 0;
+      }
+      .pitem.selected .dot {
+        background: var(--accent-blood-bright);
+      }
+      .pitem .name {
+        font-size: 15px;
+        font-weight: 500;
+      }
+      .pitem-none {
+        border-style: dashed;
+      }
+      .pitem-none .name {
+        color: var(--text-muted);
+        font-style: italic;
+      }
+      .pitem-none.selected {
+        border-color: var(--accent-gold);
+        background: linear-gradient(
+          135deg,
+          rgba(217, 169, 78, 0.2),
+          rgba(217, 169, 78, 0.06)
+        );
+      }
+      .pitem-none.selected .dot {
+        background: var(--accent-gold);
+      }
+      .divider-label {
+        text-align: center;
+        font-size: 11.5px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin: 2px 0 9px;
+      }
 
-.roster{ display:flex; flex-direction:column; gap:7px; margin:4px 0 20px; }
-.roster .ritem{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 14px;
-  border-radius:10px;
-  background:#12153080;
-  font-size:14px;
-}
-.roster .ritem.dead{ opacity:.45; text-decoration:line-through; }
-.roster .rolebadge{
-  font-size:11px;
-  padding:3px 8px;
-  border-radius:20px;
-  text-transform:uppercase;
-  letter-spacing:.06em;
-}
-.rolebadge.loup{ background:rgba(193,69,61,.25); color:#ff8f86;}
-.rolebadge.villageois{ background:rgba(120,140,220,.2); color:#aab4ee;}
+      .roster {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        margin: 4px 0 20px;
+      }
+      .roster .ritem {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: #12153080;
+        font-size: 14px;
+      }
+      .roster .ritem.dead {
+        opacity: 0.45;
+        text-decoration: line-through;
+      }
+      .roster .rolebadge {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .rolebadge.loup {
+        background: rgba(193, 69, 61, 0.25);
+        color: #ff8f86;
+      }
+      .rolebadge.villageois {
+        background: rgba(120, 140, 220, 0.2);
+        color: #aab4ee;
+      }
 
-.center-icon{ font-size:52px; text-align:center; margin-bottom:14px; }
+      .center-icon {
+        font-size: 52px;
+        text-align: center;
+        margin-bottom: 14px;
+      }
 
-.fade-in{ animation: fadeIn .45s ease; }
-@keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+      .fade-in {
+        animation: fadeIn 0.45s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
 
-.winner-banner{
-  text-align:center;
-  font-family:'Cinzel', serif;
-  font-size:24px;
-  font-weight:700;
-  margin:10px 0 4px;
-}
+      .winner-banner {
+        text-align: center;
+        font-family: "Cinzel", serif;
+        font-size: 24px;
+        font-weight: 700;
+        margin: 10px 0 4px;
+      }
 
-/* ---- reveal-all floating button + overlay ---- */
-.reveal-fab{
-  position:fixed;
-  left:calc(18px + env(safe-area-inset-left)); bottom:calc(18px + env(safe-area-inset-bottom));
-  width:52px; height:52px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:#171b3ae0;
-  backdrop-filter:blur(6px);
-  color:var(--text-light);
-  font-size:22px;
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer;
-  z-index:40;
-  box-shadow:0 8px 22px -8px rgba(0,0,0,.6);
-}
-.reveal-fab:active{ transform:scale(.93); }
+      /* ---- reveal-all floating button + overlay ---- */
+      .reveal-fab {
+        position: fixed;
+        left: calc(18px + env(safe-area-inset-left));
+        bottom: calc(18px + env(safe-area-inset-bottom));
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: #171b3ae0;
+        backdrop-filter: blur(6px);
+        color: var(--text-light);
+        font-size: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 40;
+        box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.6);
+      }
+      .reveal-fab:active {
+        transform: scale(0.93);
+      }
 
-.reveal-overlay{
-  position:fixed; inset:0;
-  background:rgba(6,7,20,.88);
-  backdrop-filter:blur(3px);
-  z-index:60;
-  display:flex;
-  align-items:flex-end;
-  justify-content:center;
-}
-.reveal-sheet{
-  width:100%;
-  max-width:440px;
-  max-height:82vh;
-  overflow-y:auto;
-  background:linear-gradient(180deg, var(--bg-panel) 0%, #10132c 100%);
-  border:1px solid var(--border);
-  border-bottom:none;
-  border-radius:22px 22px 0 0;
-  padding:22px 20px 26px;
-}
-.reveal-sheet h2.stitle{ margin-bottom:2px; }
-.reveal-sheet .subtitle{ margin-bottom:18px; }
-.reveal-close{
-  display:block;
-  width:100%;
-  margin-top:16px;
-  padding:14px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:transparent;
-  color:var(--text-light);
-  font-family:'Work Sans', sans-serif;
-  font-weight:600;
-  font-size:15px;
-  cursor:pointer;
-}
-</style>
-</head>
-<body>
-<div id="app"></div>
+      .reveal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(6, 7, 20, 0.88);
+        backdrop-filter: blur(3px);
+        z-index: 60;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .reveal-sheet {
+        width: 100%;
+        max-width: 440px;
+        max-height: 82vh;
+        overflow-y: auto;
+        background: linear-gradient(180deg, var(--bg-panel) 0%, #10132c 100%);
+        border: 1px solid var(--border);
+        border-bottom: none;
+        border-radius: 22px 22px 0 0;
+        padding: 22px 20px 26px;
+      }
+      .reveal-sheet h2.stitle {
+        margin-bottom: 2px;
+      }
+      .reveal-sheet .subtitle {
+        margin-bottom: 18px;
+      }
+      .reveal-close {
+        display: block;
+        width: 100%;
+        margin-top: 16px;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-light);
+        font-family: "Work Sans", sans-serif;
+        font-weight: 600;
+        font-size: 15px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
 
-<script>
-const app = document.getElementById('app');
+    <script>
+      const app = document.getElementById("app");
 
-const ROLE_INFO = {
-  'loup-garou': { label:'Loup-Garou', glyph:'🐺', cls:'loup' },
-  'villageois': { label:'Villageois', glyph:'🌾', cls:'villageois' }
-};
+      const ROLE_INFO = {
+        "loup-garou": { label: "Loup-Garou", glyph: "🐺", cls: "loup" },
+        villageois: { label: "Villageois", glyph: "🌾", cls: "villageois" },
+      };
 
-let state = {
-  phase:'setup',
-  numPlayers: 5,
-  numWolves: 1,
-  deck: [],
-  players: [],       // {id, name, role, alive}
-  distributeIndex: 0,
-  revealed: false,
-  round: 1,
-  targetId: null,
-  lastVictimId: null,
-  showVictimCard: false,
-  dayTargetId: undefined,
-  lastDayVictimId: null,
-  showDayVictimCard: false,
-  showAllCards: false,
-  winner: null
-};
+      let state = {
+        phase: "setup",
+        numPlayers: 5,
+        numWolves: 1,
+        deck: [],
+        players: [], // {id, name, role, alive}
+        distributeIndex: 0,
+        revealed: false,
+        round: 1,
+        targetId: null,
+        lastVictimId: null,
+        showVictimCard: false,
+        dayTargetId: undefined,
+        lastDayVictimId: null,
+        showDayVictimCard: false,
+        showAllCards: false,
+        winner: null,
+      };
 
-function normalizeName(name){
-  return (name || '').trim().toLowerCase();
-}
+      function normalizeName(name) {
+        return (name || "").trim().toLowerCase();
+      }
 
-/* ---------- persistence (localStorage) ---------- */
-const STORAGE_KEYS = { history: 'lg_history_v1', names: 'lg_recent_names_v1' };
+      /* ---------- persistence (localStorage) ---------- */
+      const STORAGE_KEYS = {
+        history: "lg_history_v1",
+        names: "lg_recent_names_v1",
+      };
 
-function loadJSON(key, fallback){
-  try{
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  }catch(e){ return fallback; }
-}
-function saveJSON(key, value){
-  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(e){ /* storage unavailable, ignore */ }
-}
+      function loadJSON(key, fallback) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch (e) {
+          return fallback;
+        }
+      }
+      function saveJSON(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {
+          /* storage unavailable, ignore */
+        }
+      }
 
-function getHistory(){ return loadJSON(STORAGE_KEYS.history, []); }
-function getRecentNames(){ return loadJSON(STORAGE_KEYS.names, []); }
+      function getHistory() {
+        return loadJSON(STORAGE_KEYS.history, []);
+      }
+      function getRecentNames() {
+        return loadJSON(STORAGE_KEYS.names, []);
+      }
 
-function rememberNames(players){
-  const existing = getRecentNames();
-  const merged = [...players.map(p => p.name), ...existing];
-  const seen = new Set();
-  const deduped = merged.filter(n => {
-    const key = normalizeName(n);
-    if(!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  saveJSON(STORAGE_KEYS.names, deduped.slice(0, 40));
-}
+      function rememberNames(players) {
+        const existing = getRecentNames();
+        const merged = [...players.map((p) => p.name), ...existing];
+        const seen = new Set();
+        const deduped = merged.filter((n) => {
+          const key = normalizeName(n);
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        saveJSON(STORAGE_KEYS.names, deduped.slice(0, 40));
+      }
 
-function recordGameResult(players, winner, round){
-  const history = getHistory();
-  history.unshift({
-    date: new Date().toISOString(),
-    round,
-    winner,
-    players: players.map(p => ({ name: p.name, role: p.role }))
-  });
-  saveJSON(STORAGE_KEYS.history, history.slice(0, 200));
-}
+      function recordGameResult(players, winner, round) {
+        const history = getHistory();
+        history.unshift({
+          date: new Date().toISOString(),
+          round,
+          winner,
+          players: players.map((p) => ({ name: p.name, role: p.role })),
+        });
+        saveJSON(STORAGE_KEYS.history, history.slice(0, 200));
+      }
 
-function computePlayerStats(){
-  const history = getHistory();
-  const stats = {}; // name -> {games, winsVillage, winsLoup}
-  history.forEach(g => {
-    g.players.forEach(p => {
-      if(!stats[p.name]) stats[p.name] = { games:0, winsVillage:0, winsLoup:0 };
-      stats[p.name].games++;
-      if(g.winner === 'villageois' && p.role === 'villageois') stats[p.name].winsVillage++;
-      if(g.winner === 'loups-garous' && p.role === 'loup-garou') stats[p.name].winsLoup++;
-    });
-  });
-  return Object.entries(stats)
-    .map(([name, s]) => ({ name, ...s, wins: s.winsVillage + s.winsLoup }))
-    .sort((a,b) => b.games - a.games || b.wins - a.wins);
-}
+      function computePlayerStats() {
+        const history = getHistory();
+        const stats = {}; // name -> {games, winsVillage, winsLoup}
+        history.forEach((g) => {
+          g.players.forEach((p) => {
+            if (!stats[p.name])
+              stats[p.name] = { games: 0, winsVillage: 0, winsLoup: 0 };
+            stats[p.name].games++;
+            if (g.winner === "villageois" && p.role === "villageois")
+              stats[p.name].winsVillage++;
+            if (g.winner === "loups-garous" && p.role === "loup-garou")
+              stats[p.name].winsLoup++;
+          });
+        });
+        return Object.entries(stats)
+          .map(([name, s]) => ({
+            name,
+            ...s,
+            wins: s.winsVillage + s.winsLoup,
+          }))
+          .sort((a, b) => b.games - a.games || b.wins - a.wins);
+      }
 
-function clearHistory(){
-  saveJSON(STORAGE_KEYS.history, []);
-}
+      function clearHistory() {
+        saveJSON(STORAGE_KEYS.history, []);
+      }
 
-function shuffle(arr){
-  const a = arr.slice();
-  for(let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i],a[j]] = [a[j],a[i]];
-  }
-  return a;
-}
+      function shuffle(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
 
-function maxWolves(n){ return Math.max(1, n - 1); }
+      function maxWolves(n) {
+        return Math.max(1, n - 1);
+      }
 
-function checkWinner(players){
-  const aliveWolves = players.filter(p=>p.alive && p.role==='loup-garou').length;
-  const aliveVillagers = players.filter(p=>p.alive && p.role==='villageois').length;
-  if(aliveWolves === 0) return 'villageois';
-  if(aliveWolves >= aliveVillagers) return 'loups-garous';
-  return null;
-}
+      function checkWinner(players) {
+        const aliveWolves = players.filter(
+          (p) => p.alive && p.role === "loup-garou",
+        ).length;
+        const aliveVillagers = players.filter(
+          (p) => p.alive && p.role === "villageois",
+        ).length;
+        if (aliveWolves === 0) return "villageois";
+        if (aliveWolves >= aliveVillagers) return "loups-garous";
+        return null;
+      }
 
-function set(partial){
-  state = {...state, ...partial};
-  render();
-}
+      function set(partial) {
+        state = { ...state, ...partial };
+        render();
+      }
 
-function resetGame(){
-  state = {
-    phase:'setup', numPlayers:5, numWolves:1, deck:[], players:[],
-    distributeIndex:0, revealed:false, round:1, targetId:null,
-    lastVictimId:null, showVictimCard:false,
-    dayTargetId:undefined, lastDayVictimId:null, showDayVictimCard:false,
-    showAllCards:false,
-    winner:null
-  };
-  render();
-}
+      function resetGame() {
+        state = {
+          phase: "setup",
+          numPlayers: 5,
+          numWolves: 1,
+          deck: [],
+          players: [],
+          distributeIndex: 0,
+          revealed: false,
+          round: 1,
+          targetId: null,
+          lastVictimId: null,
+          showVictimCard: false,
+          dayTargetId: undefined,
+          lastDayVictimId: null,
+          showDayVictimCard: false,
+          showAllCards: false,
+          winner: null,
+        };
+        render();
+      }
 
-/* ---------- moon ---------- */
-function moonSvg(mode){
-  // mode: calm | night | blood | gold
-  const colors = {
-    calm:  '#c7cbea',
-    night: '#f4f4ff',
-    blood: '#e0574d',
-    gold:  '#f0c878'
-  };
-  const glowClass = {
-    calm:'moon-glow-calm', night:'moon-glow-night', blood:'moon-glow-blood', gold:'moon-glow-gold'
-  }[mode];
-  return `<div class="moon-wrap">
+      /* ---------- moon ---------- */
+      function moonSvg(mode) {
+        // mode: calm | night | blood | gold
+        const colors = {
+          calm: "#c7cbea",
+          night: "#f4f4ff",
+          blood: "#e0574d",
+          gold: "#f0c878",
+        };
+        const glowClass = {
+          calm: "moon-glow-calm",
+          night: "moon-glow-night",
+          blood: "moon-glow-blood",
+          gold: "moon-glow-gold",
+        }[mode];
+        return `<div class="moon-wrap">
     <svg class="moon-svg ${glowClass}" viewBox="0 0 100 100">
       <circle class="moon-body" cx="50" cy="50" r="34" fill="${colors[mode]}"/>
     </svg>
   </div>`;
-}
+      }
 
-/* ---------- templates per phase ---------- */
+      /* ---------- templates per phase ---------- */
 
-function tplSetup(){
-  const wolvesMax = maxWolves(state.numPlayers);
-  return `
-    ${moonSvg('calm')}
+      function tplSetup() {
+        const wolvesMax = maxWolves(state.numPlayers);
+        return `
+    ${moonSvg("calm")}
     <div class="eyebrow">Partie locale · 1 téléphone</div>
     <h1 class="title">Loup-Garou</h1>
 
@@ -569,58 +770,73 @@ function tplSetup(){
     <div class="subtitle">Chaque joueur passera le téléphone à son tour pour piocher sa carte et inscrire son nom.</div>
 
     <button class="btn btn-primary" id="start-distribute">Commencer la distribution des rôles</button>
-    ${getHistory().length > 0 ? `<button class="btn btn-ghost" id="view-stats" style="margin-top:12px;">Statistiques &amp; historique</button>` : ''}
+    ${getHistory().length > 0 ? `<button class="btn btn-ghost" id="view-stats" style="margin-top:12px;">Statistiques &amp; historique</button>` : ""}
   `;
-}
+      }
 
-function tplStats(){
-  const stats = computePlayerStats();
-  const history = getHistory();
-  return `
-    ${moonSvg('calm')}
+      function tplStats() {
+        const stats = computePlayerStats();
+        const history = getHistory();
+        return `
+    ${moonSvg("calm")}
     <div class="eyebrow">Sur cet appareil</div>
     <h2 class="stitle">Statistiques</h2>
-    <div class="subtitle">${history.length} partie${history.length>1?'s':''} enregistrée${history.length>1?'s':''} localement.</div>
+    <div class="subtitle">${history.length} partie${history.length > 1 ? "s" : ""} enregistrée${history.length > 1 ? "s" : ""} localement.</div>
 
     <label class="field-label">Classement des joueurs</label>
     <div class="roster">
-      ${stats.length ? stats.map(s => `
+      ${
+        stats.length
+          ? stats
+              .map(
+                (s) => `
         <div class="ritem">
           <span>${escapeHtml(s.name)}</span>
-          <span class="sub" style="margin-top:0;">${s.games} partie${s.games>1?'s':''} · ${s.wins} victoire${s.wins>1?'s':''}</span>
+          <span class="sub" style="margin-top:0;">${s.games} partie${s.games > 1 ? "s" : ""} · ${s.wins} victoire${s.wins > 1 ? "s" : ""}</span>
         </div>
-      `).join('') : `<div class="ritem"><span class="sub" style="margin-top:0;">Aucune donnée pour le moment</span></div>`}
+      `,
+              )
+              .join("")
+          : `<div class="ritem"><span class="sub" style="margin-top:0;">Aucune donnée pour le moment</span></div>`
+      }
     </div>
 
     <label class="field-label">Dernières parties</label>
     <div class="roster">
-      ${history.slice(0,10).map(g => {
-        const d = new Date(g.date);
-        const dateStr = d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'});
-        return `
+      ${history
+        .slice(0, 10)
+        .map((g) => {
+          const d = new Date(g.date);
+          const dateStr = d.toLocaleDateString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+          });
+          return `
         <div class="ritem">
-          <span>${dateStr} · ${g.players.length} joueurs · ${g.round} nuit${g.round>1?'s':''}</span>
-          <span class="rolebadge ${g.winner==='loups-garous'?'loup':'villageois'}">${g.winner==='loups-garous'?'Loups':'Village'}</span>
+          <span>${dateStr} · ${g.players.length} joueurs · ${g.round} nuit${g.round > 1 ? "s" : ""}</span>
+          <span class="rolebadge ${g.winner === "loups-garous" ? "loup" : "villageois"}">${g.winner === "loups-garous" ? "Loups" : "Village"}</span>
         </div>
-      `;}).join('')}
+      `;
+        })
+        .join("")}
     </div>
 
     <button class="btn btn-ghost" id="clear-history">Effacer l'historique</button>
     <div style="height:10px"></div>
     <button class="btn btn-primary" id="back-to-setup">Retour</button>
   `;
-}
+      }
 
-function tplDistribute(){
-  const i = state.distributeIndex;
-  const role = state.deck[i];
-  const info = ROLE_INFO[role];
-  const isLast = i === state.numPlayers - 1;
+      function tplDistribute() {
+        const i = state.distributeIndex;
+        const role = state.deck[i];
+        const info = ROLE_INFO[role];
+        const isLast = i === state.numPlayers - 1;
 
-  if(!state.revealed){
-    return `
-      ${moonSvg('calm')}
-      <div class="progress">Joueur ${i+1} / ${state.numPlayers}</div>
+        if (!state.revealed) {
+          return `
+      ${moonSvg("calm")}
+      <div class="progress">Joueur ${i + 1} / ${state.numPlayers}</div>
       <h2 class="stitle">Passez le téléphone</h2>
       <div class="subtitle">Au joueur suivant. Il touche la carte pour découvrir son rôle en secret.</div>
       <div class="card-zone">
@@ -638,11 +854,11 @@ function tplDistribute(){
         </div>
       </div>
     `;
-  }
+        }
 
-  return `
-    ${moonSvg('calm')}
-    <div class="progress">Joueur ${i+1} / ${state.numPlayers}</div>
+        return `
+    ${moonSvg("calm")}
+    <div class="progress">Joueur ${i + 1} / ${state.numPlayers}</div>
     <h2 class="stitle">Votre carte</h2>
     <div class="subtitle">Retenez votre rôle, puis inscrivez votre nom pour la valider.</div>
     <div class="card-zone">
@@ -660,71 +876,79 @@ function tplDistribute(){
       </div>
     </div>
     <label class="field-label">Votre nom</label>
-    <input type="text" id="nameInput" placeholder="Entrez votre nom" autocomplete="off" value="${state.nameInputVal||''}" list="recentNames">
+    <input type="text" id="nameInput" placeholder="Entrez votre nom" autocomplete="off" value="${state.nameInputVal || ""}" list="recentNames">
     <datalist id="recentNames">
-      ${getRecentNames().map(n => `<option value="${escapeHtml(n)}"></option>`).join('')}
+      ${getRecentNames()
+        .map((n) => `<option value="${escapeHtml(n)}"></option>`)
+        .join("")}
     </datalist>
     <div class="sub" id="nameError" style="display:none; color:var(--accent-blood-bright); margin-top:8px;">Ce nom est déjà pris dans cette partie, choisissez-en un autre.</div>
     <div style="height:18px"></div>
-    <button class="btn btn-primary" id="confirm-name" disabled>${isLast ? 'Valider et commencer la nuit' : 'Valider et passer au joueur suivant'}</button>
+    <button class="btn btn-primary" id="confirm-name" disabled>${isLast ? "Valider et commencer la nuit" : "Valider et passer au joueur suivant"}</button>
   `;
-}
+      }
 
-function tplNightSleep(){
-  return `
-    ${moonSvg('night')}
+      function tplNightSleep() {
+        return `
+    ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>
     <div class="center-icon">🌙</div>
     <h2 class="stitle">Le village s'endort...</h2>
     <div class="subtitle">Tout le monde ferme les yeux. Le maître du jeu garde le téléphone.</div>
     <button class="btn btn-primary" id="wake-wolves">Les loups-garous se réveillent</button>
   `;
-}
+      }
 
-function tplNightWolves(){
-  const targets = state.players.filter(p => p.alive && p.role !== 'loup-garou');
-  return `
-    ${moonSvg('night')}
+      function tplNightWolves() {
+        const targets = state.players.filter(
+          (p) => p.alive && p.role !== "loup-garou",
+        );
+        return `
+    ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>
     <div class="center-icon">🐺</div>
     <h2 class="stitle">Les loups-garous se réveillent</h2>
     <div class="subtitle">Ils désignent en silence leur victime. Le maître du jeu sélectionne ci-dessous.</div>
     <div class="plist">
-      ${targets.map(p => `
-        <div class="pitem ${state.targetId===p.id?'selected':''}" data-target="${p.id}">
+      ${targets
+        .map(
+          (p) => `
+        <div class="pitem ${state.targetId === p.id ? "selected" : ""}" data-target="${p.id}">
           <div class="dot"></div>
           <div class="name">${escapeHtml(p.name)}</div>
         </div>
-      `).join('')}
+      `,
+        )
+        .join("")}
     </div>
-    <button class="btn btn-primary" id="confirm-target" ${state.targetId===null?'disabled':''}>Confirmer la cible</button>
+    <button class="btn btn-primary" id="confirm-target" ${state.targetId === null ? "disabled" : ""}>Confirmer la cible</button>
   `;
-}
+      }
 
-function tplNightTransition(){
-  return `
-    ${moonSvg('night')}
+      function tplNightTransition() {
+        return `
+    ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>
     <div class="center-icon">🌙</div>
     <h2 class="stitle">Les loups-garous se rendorment...</h2>
     <div class="subtitle">Le village va se réveiller.</div>
     <button class="btn btn-primary" id="wake-village">Réveiller le village</button>
   `;
-}
+      }
 
-function tplNightReveal(){
-  const victim = state.players.find(p => p.id === state.lastVictimId);
-  const info = ROLE_INFO[victim.role];
-  const gameEnds = checkWinner(state.players) !== null;
+      function tplNightReveal() {
+        const victim = state.players.find((p) => p.id === state.lastVictimId);
+        const info = ROLE_INFO[victim.role];
+        const gameEnds = checkWinner(state.players) !== null;
 
-  return `
-    ${moonSvg('blood')}
+        return `
+    ${moonSvg("blood")}
     <div class="center-icon">☀️</div>
     <h2 class="stitle">Le village se réveille</h2>
     <div class="subtitle">Cette nuit, <strong>${escapeHtml(victim.name)}</strong> a été dévoré(e) par les loups-garous.</div>
 
     <div class="card-zone">
-      <div class="card-flip ${state.showVictimCard?'flipped':''}">
+      <div class="card-flip ${state.showVictimCard ? "flipped" : ""}">
         <div class="card-inner">
           <div class="card-face card-front">
             <div class="glyph">🌒</div>
@@ -737,55 +961,65 @@ function tplNightReveal(){
         </div>
       </div>
     </div>
-    <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? 'Cacher la carte' : 'Afficher sa carte'}</button>
+    <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
 
     <div style="height:8px"></div>
-    <button class="btn btn-primary" id="continue-after-reveal">${gameEnds ? 'Voir le résultat' : 'Réveiller le village pour voter'}</button>
+    <button class="btn btn-primary" id="continue-after-reveal">${gameEnds ? "Voir le résultat" : "Passer au vote"}</button>
   `;
-}
+      }
 
-function tplDayVote(){
-  const alive = state.players.filter(p => p.alive);
-  return `
-    ${moonSvg('gold')}
+      function tplDayVote() {
+        const alive = state.players.filter((p) => p.alive);
+        return `
+    ${moonSvg("gold")}
     <div class="eyebrow">Jour ${state.round}</div>
     <div class="center-icon">🗳️</div>
     <h2 class="stitle">Le village vote</h2>
     <div class="subtitle">Discutez, puis désignez la personne que le village choisit d'éliminer.</div>
     <div class="plist">
-      ${alive.map(p => `
-        <div class="pitem ${state.dayTargetId===p.id?'selected':''}" data-dayvote="${p.id}">
+      ${alive
+        .map(
+          (p) => `
+        <div class="pitem ${state.dayTargetId === p.id ? "selected" : ""}" data-dayvote="${p.id}">
           <div class="dot"></div>
           <div class="name">${escapeHtml(p.name)}</div>
         </div>
-      `).join('')}
-      <div class="pitem pitem-none ${state.dayTargetId==='none'?'selected':''}" data-dayvote="none">
+      `,
+        )
+        .join("")}
+      <div class="pitem pitem-none ${state.dayTargetId === "none" ? "selected" : ""}" data-dayvote="none">
         <div class="dot"></div>
         <div class="name">Égalité — personne n'est éliminé</div>
       </div>
     </div>
-    <button class="btn btn-primary" id="confirm-day-vote" ${state.dayTargetId===undefined?'disabled':''}>Confirmer le vote</button>
+    <button class="btn btn-primary" id="confirm-day-vote" ${state.dayTargetId === undefined ? "disabled" : ""}>Confirmer le vote</button>
   `;
-}
+      }
 
-function tplDayReveal(){
-  const hasVictim = state.lastDayVictimId !== null;
-  const victim = hasVictim ? state.players.find(p => p.id === state.lastDayVictimId) : null;
-  const info = hasVictim ? ROLE_INFO[victim.role] : null;
-  const gameEnds = checkWinner(state.players) !== null;
+      function tplDayReveal() {
+        const hasVictim = state.lastDayVictimId !== null;
+        const victim = hasVictim
+          ? state.players.find((p) => p.id === state.lastDayVictimId)
+          : null;
+        const info = hasVictim ? ROLE_INFO[victim.role] : null;
+        const gameEnds = checkWinner(state.players) !== null;
 
-  return `
-    ${moonSvg('gold')}
+        return `
+    ${moonSvg("gold")}
     <div class="eyebrow">Jour ${state.round}</div>
-    <div class="center-icon">${hasVictim ? '⚖️' : '🤝'}</div>
-    <h2 class="stitle">${hasVictim ? 'Le verdict du village' : 'Aucune élimination'}</h2>
-    <div class="subtitle">${hasVictim
-      ? `Le village a voté l'élimination de <strong>${escapeHtml(victim.name)}</strong>.`
-      : `Le vote se solde par une égalité, personne n'est éliminé aujourd'hui.`}</div>
+    <div class="center-icon">${hasVictim ? "⚖️" : "🤝"}</div>
+    <h2 class="stitle">${hasVictim ? "Le verdict du village" : "Aucune élimination"}</h2>
+    <div class="subtitle">${
+      hasVictim
+        ? `Le village a voté l'élimination de <strong>${escapeHtml(victim.name)}</strong>.`
+        : `Le vote se solde par une égalité, personne n'est éliminé aujourd'hui.`
+    }</div>
 
-    ${hasVictim ? `
+    ${
+      hasVictim
+        ? `
       <div class="card-zone">
-        <div class="card-flip ${state.showDayVictimCard?'flipped':''}">
+        <div class="card-flip ${state.showDayVictimCard ? "flipped" : ""}">
           <div class="card-inner">
             <div class="card-face card-front">
               <div class="glyph">🌒</div>
@@ -798,261 +1032,398 @@ function tplDayReveal(){
           </div>
         </div>
       </div>
-      <button class="btn btn-ghost" id="toggle-day-victim-card">${state.showDayVictimCard ? 'Cacher la carte' : 'Afficher sa carte'}</button>
-    ` : ''}
+      <button class="btn btn-ghost" id="toggle-day-victim-card">${state.showDayVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
+    `
+        : ""
+    }
 
     <label class="field-label">Survivants</label>
     <div class="roster">
-      ${state.players.map(p => `
-        <div class="ritem ${p.alive?'':'dead'}">
+      ${state.players
+        .map(
+          (p) => `
+        <div class="ritem ${p.alive ? "" : "dead"}">
           <span>${escapeHtml(p.name)}</span>
-          ${(!p.alive && (p.roleRevealed || (p.id === state.lastDayVictimId && state.showDayVictimCard))) ? `<span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>` : ''}
+          ${!p.alive && (p.roleRevealed || (p.id === state.lastDayVictimId && state.showDayVictimCard)) ? `<span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>` : ""}
         </div>
-      `).join('')}
+      `,
+        )
+        .join("")}
     </div>
 
-    <button class="btn btn-primary" id="continue-after-day">${gameEnds ? 'Voir le résultat' : 'Nuit suivante'}</button>
+    <button class="btn btn-primary" id="continue-after-day">${gameEnds ? "Voir le résultat" : "Nuit suivante"}</button>
   `;
-}
+      }
 
-function tplGameOver(){
-  const wolvesWon = state.winner === 'loups-garous';
-  return `
-    ${moonSvg(wolvesWon ? 'blood' : 'gold')}
-    <div class="center-icon">${wolvesWon ? '🐺' : '🌞'}</div>
-    <div class="winner-banner">${wolvesWon ? 'Les loups-garous ont gagné' : 'Les villageois ont gagné'}</div>
-    <div class="subtitle">Partie terminée après ${state.round} nuit${state.round>1?'s':''}.</div>
+      function tplGameOver() {
+        const wolvesWon = state.winner === "loups-garous";
+        return `
+    ${moonSvg(wolvesWon ? "blood" : "gold")}
+    <div class="center-icon">${wolvesWon ? "🐺" : "🌞"}</div>
+    <div class="winner-banner">${wolvesWon ? "Les loups-garous ont gagné" : "Les villageois ont gagné"}</div>
+    <div class="subtitle">Partie terminée après ${state.round} nuit${state.round > 1 ? "s" : ""}.</div>
 
     <label class="field-label">Tous les rôles</label>
     <div class="roster">
-      ${state.players.map(p => `
-        <div class="ritem ${p.alive?'':'dead'}">
+      ${state.players
+        .map(
+          (p) => `
+        <div class="ritem ${p.alive ? "" : "dead"}">
           <span>${escapeHtml(p.name)}</span>
           <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
         </div>
-      `).join('')}
+      `,
+        )
+        .join("")}
     </div>
 
     <button class="btn btn-gold" id="new-game">Nouvelle partie</button>
   `;
-}
+      }
 
-function escapeHtml(s){
-  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
+      function escapeHtml(s) {
+        return s.replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
 
-function tplRevealAllOverlay(){
-  return `
+      function tplRevealAllOverlay() {
+        return `
     <div class="reveal-overlay" id="revealOverlay">
       <div class="reveal-sheet" id="revealSheet">
         <h2 class="stitle">Toutes les cartes</h2>
         <div class="subtitle">Rôles de tous les joueurs, vivants et morts.</div>
         <div class="roster">
-          ${state.players.map(p => `
-            <div class="ritem ${p.alive?'':'dead'}">
+          ${state.players
+            .map(
+              (p) => `
+            <div class="ritem ${p.alive ? "" : "dead"}">
               <span>${escapeHtml(p.name)}</span>
               <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
             </div>
-          `).join('')}
+          `,
+            )
+            .join("")}
         </div>
         <button class="reveal-close" id="closeRevealOverlay">Fermer</button>
       </div>
     </div>
   `;
-}
+      }
 
-/* ---------- render + wire events ---------- */
-function render(){
-  let html = '';
-  switch(state.phase){
-    case 'setup': html = tplSetup(); break;
-    case 'stats': html = tplStats(); break;
-    case 'distribute': html = tplDistribute(); break;
-    case 'night_sleep': html = tplNightSleep(); break;
-    case 'night_wolves': html = tplNightWolves(); break;
-    case 'night_transition': html = tplNightTransition(); break;
-    case 'night_reveal': html = tplNightReveal(); break;
-    case 'day_vote': html = tplDayVote(); break;
-    case 'day_reveal': html = tplDayReveal(); break;
-    case 'gameover': html = tplGameOver(); break;
-  }
-  const showFab = state.players.length > 0 && state.phase !== 'distribute';
-  const fab = showFab ? `<button class="reveal-fab" id="revealFab" title="Voir toutes les cartes">🃏</button>` : '';
-  const overlay = state.showAllCards ? tplRevealAllOverlay() : '';
-  app.innerHTML = `<div class="fade-in">${html}</div>${fab}${overlay}`;
-  wire();
-}
+      /* ---------- render + wire events ---------- */
+      function render() {
+        let html = "";
+        switch (state.phase) {
+          case "setup":
+            html = tplSetup();
+            break;
+          case "stats":
+            html = tplStats();
+            break;
+          case "distribute":
+            html = tplDistribute();
+            break;
+          case "night_sleep":
+            html = tplNightSleep();
+            break;
+          case "night_wolves":
+            html = tplNightWolves();
+            break;
+          case "night_transition":
+            html = tplNightTransition();
+            break;
+          case "night_reveal":
+            html = tplNightReveal();
+            break;
+          case "day_vote":
+            html = tplDayVote();
+            break;
+          case "day_reveal":
+            html = tplDayReveal();
+            break;
+          case "gameover":
+            html = tplGameOver();
+            break;
+        }
+        const showFab =
+          state.players.length > 0 && state.phase !== "distribute";
+        const fab = showFab
+          ? `<button class="reveal-fab" id="revealFab" title="Voir toutes les cartes">🃏</button>`
+          : "";
+        const overlay = state.showAllCards ? tplRevealAllOverlay() : "";
+        app.innerHTML = `<div class="fade-in">${html}</div>${fab}${overlay}`;
+        wire();
+      }
 
-function wire(){
-  // setup
-  const pMinus = app.querySelector('[data-act="players-"]');
-  const pPlus  = app.querySelector('[data-act="players+"]');
-  const wMinus = app.querySelector('[data-act="wolves-"]');
-  const wPlus  = app.querySelector('[data-act="wolves+"]');
-  if(pMinus) pMinus.onclick = () => {
-    const n = Math.max(3, state.numPlayers-1);
-    const w = Math.min(state.numWolves, maxWolves(n));
-    set({numPlayers:n, numWolves:w});
-  };
-  if(pPlus) pPlus.onclick = () => {
-    const n = Math.min(20, state.numPlayers+1);
-    set({numPlayers:n});
-  };
-  if(wMinus) wMinus.onclick = () => {
-    set({numWolves: Math.max(1, state.numWolves-1)});
-  };
-  if(wPlus) wPlus.onclick = () => {
-    set({numWolves: Math.min(maxWolves(state.numPlayers), state.numWolves+1)});
-  };
-  const viewStats = app.querySelector('#view-stats');
-  if(viewStats) viewStats.onclick = () => set({phase:'stats'});
-  const backToSetup = app.querySelector('#back-to-setup');
-  if(backToSetup) backToSetup.onclick = () => set({phase:'setup'});
-  const clearHistoryBtn = app.querySelector('#clear-history');
-  if(clearHistoryBtn) clearHistoryBtn.onclick = () => {
-    if(confirm("Effacer tout l'historique des parties sur cet appareil ?")){
-      clearHistory();
+      function wire() {
+        // setup
+        const pMinus = app.querySelector('[data-act="players-"]');
+        const pPlus = app.querySelector('[data-act="players+"]');
+        const wMinus = app.querySelector('[data-act="wolves-"]');
+        const wPlus = app.querySelector('[data-act="wolves+"]');
+        if (pMinus)
+          pMinus.onclick = () => {
+            const n = Math.max(3, state.numPlayers - 1);
+            const w = Math.min(state.numWolves, maxWolves(n));
+            set({ numPlayers: n, numWolves: w });
+          };
+        if (pPlus)
+          pPlus.onclick = () => {
+            const n = Math.min(20, state.numPlayers + 1);
+            set({ numPlayers: n });
+          };
+        if (wMinus)
+          wMinus.onclick = () => {
+            set({ numWolves: Math.max(1, state.numWolves - 1) });
+          };
+        if (wPlus)
+          wPlus.onclick = () => {
+            set({
+              numWolves: Math.min(
+                maxWolves(state.numPlayers),
+                state.numWolves + 1,
+              ),
+            });
+          };
+        const viewStats = app.querySelector("#view-stats");
+        if (viewStats) viewStats.onclick = () => set({ phase: "stats" });
+        const backToSetup = app.querySelector("#back-to-setup");
+        if (backToSetup) backToSetup.onclick = () => set({ phase: "setup" });
+        const clearHistoryBtn = app.querySelector("#clear-history");
+        if (clearHistoryBtn)
+          clearHistoryBtn.onclick = () => {
+            if (
+              confirm(
+                "Effacer tout l'historique des parties sur cet appareil ?",
+              )
+            ) {
+              clearHistory();
+              render();
+            }
+          };
+        const startDistribute = app.querySelector("#start-distribute");
+        if (startDistribute)
+          startDistribute.onclick = () => {
+            const roles = shuffle([
+              ...Array(state.numWolves).fill("loup-garou"),
+              ...Array(state.numPlayers - state.numWolves).fill("villageois"),
+            ]);
+            set({
+              deck: roles,
+              phase: "distribute",
+              distributeIndex: 0,
+              revealed: false,
+              players: [],
+            });
+          };
+
+        // distribute
+        const cardFlip = app.querySelector("#cardFlip");
+        if (cardFlip) cardFlip.onclick = () => set({ revealed: true });
+        const nameInput = app.querySelector("#nameInput");
+        const confirmName = app.querySelector("#confirm-name");
+        const nameError = app.querySelector("#nameError");
+        const isNameTaken = (name) => {
+          const norm = normalizeName(name);
+          return (
+            norm.length > 0 &&
+            state.players.some((p) => normalizeName(p.name) === norm)
+          );
+        };
+        if (nameInput) {
+          nameInput.oninput = () => {
+            const trimmed = nameInput.value.trim();
+            const taken = isNameTaken(trimmed);
+            confirmName.disabled = trimmed.length === 0 || taken;
+            if (nameError) nameError.style.display = taken ? "block" : "none";
+            state.nameInputVal = nameInput.value;
+          };
+          nameInput.focus();
+        }
+        if (confirmName)
+          confirmName.onclick = () => {
+            const name = (nameInput.value || "").trim();
+            if (!name) return;
+            if (isNameTaken(name)) {
+              if (nameError) nameError.style.display = "block";
+              return;
+            }
+            const role = state.deck[state.distributeIndex];
+            const newPlayers = [
+              ...state.players,
+              {
+                id: state.distributeIndex,
+                name,
+                role,
+                alive: true,
+                roleRevealed: false,
+              },
+            ];
+            const nextIndex = state.distributeIndex + 1;
+            if (nextIndex >= state.numPlayers) {
+              rememberNames(newPlayers);
+              set({
+                players: newPlayers,
+                phase: "night_sleep",
+                round: 1,
+                distributeIndex: nextIndex,
+                revealed: false,
+                nameInputVal: "",
+              });
+            } else {
+              set({
+                players: newPlayers,
+                distributeIndex: nextIndex,
+                revealed: false,
+                nameInputVal: "",
+              });
+            }
+          };
+
+        // night sleep
+        const wakeWolves = app.querySelector("#wake-wolves");
+        if (wakeWolves)
+          wakeWolves.onclick = () =>
+            set({ phase: "night_wolves", targetId: null });
+
+        // night wolves - target selection
+        app.querySelectorAll("[data-target]").forEach((el) => {
+          el.onclick = () =>
+            set({ targetId: Number(el.getAttribute("data-target")) });
+        });
+        const confirmTarget = app.querySelector("#confirm-target");
+        if (confirmTarget)
+          confirmTarget.onclick = () => {
+            const players = state.players.map((p) =>
+              p.id === state.targetId ? { ...p, alive: false } : p,
+            );
+            set({
+              players,
+              lastVictimId: state.targetId,
+              phase: "night_transition",
+            });
+          };
+
+        // night transition
+        const wakeVillage = app.querySelector("#wake-village");
+        if (wakeVillage)
+          wakeVillage.onclick = () =>
+            set({ phase: "night_reveal", showVictimCard: false });
+
+        // night reveal
+        const toggleCard = app.querySelector("#toggle-victim-card");
+        if (toggleCard)
+          toggleCard.onclick = () =>
+            set({ showVictimCard: !state.showVictimCard });
+        const continueBtn = app.querySelector("#continue-after-reveal");
+        if (continueBtn)
+          continueBtn.onclick = () => {
+            const players = state.players.map((p) =>
+              p.id === state.lastVictimId ? { ...p, roleRevealed: true } : p,
+            );
+            const winner = checkWinner(players);
+            if (winner) {
+              recordGameResult(players, winner, state.round);
+              set({ players, phase: "gameover", winner });
+            } else {
+              set({ players, phase: "day_vote", dayTargetId: undefined });
+            }
+          };
+
+        // day vote
+        app.querySelectorAll("[data-dayvote]").forEach((el) => {
+          el.onclick = () => {
+            const v = el.getAttribute("data-dayvote");
+            set({ dayTargetId: v === "none" ? "none" : Number(v) });
+          };
+        });
+        const confirmDayVote = app.querySelector("#confirm-day-vote");
+        if (confirmDayVote)
+          confirmDayVote.onclick = () => {
+            if (state.dayTargetId === "none") {
+              set({
+                lastDayVictimId: null,
+                showDayVictimCard: false,
+                phase: "day_reveal",
+              });
+            } else {
+              const players = state.players.map((p) =>
+                p.id === state.dayTargetId ? { ...p, alive: false } : p,
+              );
+              set({
+                players,
+                lastDayVictimId: state.dayTargetId,
+                showDayVictimCard: false,
+                phase: "day_reveal",
+              });
+            }
+          };
+
+        // day reveal
+        const toggleDayCard = app.querySelector("#toggle-day-victim-card");
+        if (toggleDayCard)
+          toggleDayCard.onclick = () =>
+            set({ showDayVictimCard: !state.showDayVictimCard });
+        const continueAfterDay = app.querySelector("#continue-after-day");
+        if (continueAfterDay)
+          continueAfterDay.onclick = () => {
+            const players =
+              state.lastDayVictimId !== null
+                ? state.players.map((p) =>
+                    p.id === state.lastDayVictimId
+                      ? { ...p, roleRevealed: true }
+                      : p,
+                  )
+                : state.players;
+            const winner = checkWinner(players);
+            if (winner) {
+              recordGameResult(players, winner, state.round);
+              set({ players, phase: "gameover", winner });
+            } else {
+              set({
+                players,
+                phase: "night_sleep",
+                round: state.round + 1,
+                targetId: null,
+              });
+            }
+          };
+
+        // gameover
+        const newGame = app.querySelector("#new-game");
+        if (newGame) newGame.onclick = resetGame;
+
+        // reveal-all fab
+        const revealFab = app.querySelector("#revealFab");
+        if (revealFab) revealFab.onclick = () => set({ showAllCards: true });
+        const closeReveal = app.querySelector("#closeRevealOverlay");
+        if (closeReveal)
+          closeReveal.onclick = () => set({ showAllCards: false });
+        const revealOverlay = app.querySelector("#revealOverlay");
+        if (revealOverlay)
+          revealOverlay.onclick = (e) => {
+            if (e.target === revealOverlay) set({ showAllCards: false });
+          };
+      }
+
       render();
-    }
-  };
-  const startDistribute = app.querySelector('#start-distribute');
-  if(startDistribute) startDistribute.onclick = () => {
-    const roles = shuffle([
-      ...Array(state.numWolves).fill('loup-garou'),
-      ...Array(state.numPlayers - state.numWolves).fill('villageois')
-    ]);
-    set({deck: roles, phase:'distribute', distributeIndex:0, revealed:false, players:[]});
-  };
 
-  // distribute
-  const cardFlip = app.querySelector('#cardFlip');
-  if(cardFlip) cardFlip.onclick = () => set({revealed:true});
-  const nameInput = app.querySelector('#nameInput');
-  const confirmName = app.querySelector('#confirm-name');
-  const nameError = app.querySelector('#nameError');
-  const isNameTaken = (name) => {
-    const norm = normalizeName(name);
-    return norm.length > 0 && state.players.some(p => normalizeName(p.name) === norm);
-  };
-  if(nameInput){
-    nameInput.oninput = () => {
-      const trimmed = nameInput.value.trim();
-      const taken = isNameTaken(trimmed);
-      confirmName.disabled = trimmed.length === 0 || taken;
-      if(nameError) nameError.style.display = taken ? 'block' : 'none';
-      state.nameInputVal = nameInput.value;
-    };
-    nameInput.focus();
-  }
-  if(confirmName) confirmName.onclick = () => {
-    const name = (nameInput.value || '').trim();
-    if(!name) return;
-    if(isNameTaken(name)){
-      if(nameError) nameError.style.display = 'block';
-      return;
-    }
-    const role = state.deck[state.distributeIndex];
-    const newPlayers = [...state.players, {id: state.distributeIndex, name, role, alive:true, roleRevealed:false}];
-    const nextIndex = state.distributeIndex + 1;
-    if(nextIndex >= state.numPlayers){
-      rememberNames(newPlayers);
-      set({players:newPlayers, phase:'night_sleep', round:1, distributeIndex:nextIndex, revealed:false, nameInputVal:''});
-    } else {
-      set({players:newPlayers, distributeIndex:nextIndex, revealed:false, nameInputVal:''});
-    }
-  };
-
-  // night sleep
-  const wakeWolves = app.querySelector('#wake-wolves');
-  if(wakeWolves) wakeWolves.onclick = () => set({phase:'night_wolves', targetId:null});
-
-  // night wolves - target selection
-  app.querySelectorAll('[data-target]').forEach(el => {
-    el.onclick = () => set({targetId: Number(el.getAttribute('data-target'))});
-  });
-  const confirmTarget = app.querySelector('#confirm-target');
-  if(confirmTarget) confirmTarget.onclick = () => {
-    const players = state.players.map(p => p.id === state.targetId ? {...p, alive:false} : p);
-    set({players, lastVictimId: state.targetId, phase:'night_transition'});
-  };
-
-  // night transition
-  const wakeVillage = app.querySelector('#wake-village');
-  if(wakeVillage) wakeVillage.onclick = () => set({phase:'night_reveal', showVictimCard:false});
-
-  // night reveal
-  const toggleCard = app.querySelector('#toggle-victim-card');
-  if(toggleCard) toggleCard.onclick = () => set({showVictimCard: !state.showVictimCard});
-  const continueBtn = app.querySelector('#continue-after-reveal');
-  if(continueBtn) continueBtn.onclick = () => {
-    const players = state.players.map(p => p.id === state.lastVictimId ? {...p, roleRevealed:true} : p);
-    const winner = checkWinner(players);
-    if(winner){
-      recordGameResult(players, winner, state.round);
-      set({players, phase:'gameover', winner});
-    } else {
-      set({players, phase:'day_vote', dayTargetId:undefined});
-    }
-  };
-
-  // day vote
-  app.querySelectorAll('[data-dayvote]').forEach(el => {
-    el.onclick = () => {
-      const v = el.getAttribute('data-dayvote');
-      set({dayTargetId: v === 'none' ? 'none' : Number(v)});
-    };
-  });
-  const confirmDayVote = app.querySelector('#confirm-day-vote');
-  if(confirmDayVote) confirmDayVote.onclick = () => {
-    if(state.dayTargetId === 'none'){
-      set({lastDayVictimId:null, showDayVictimCard:false, phase:'day_reveal'});
-    } else {
-      const players = state.players.map(p => p.id === state.dayTargetId ? {...p, alive:false} : p);
-      set({players, lastDayVictimId: state.dayTargetId, showDayVictimCard:false, phase:'day_reveal'});
-    }
-  };
-
-  // day reveal
-  const toggleDayCard = app.querySelector('#toggle-day-victim-card');
-  if(toggleDayCard) toggleDayCard.onclick = () => set({showDayVictimCard: !state.showDayVictimCard});
-  const continueAfterDay = app.querySelector('#continue-after-day');
-  if(continueAfterDay) continueAfterDay.onclick = () => {
-    const players = state.lastDayVictimId !== null
-      ? state.players.map(p => p.id === state.lastDayVictimId ? {...p, roleRevealed:true} : p)
-      : state.players;
-    const winner = checkWinner(players);
-    if(winner){
-      recordGameResult(players, winner, state.round);
-      set({players, phase:'gameover', winner});
-    } else {
-      set({players, phase:'night_sleep', round: state.round+1, targetId:null});
-    }
-  };
-
-  // gameover
-  const newGame = app.querySelector('#new-game');
-  if(newGame) newGame.onclick = resetGame;
-
-  // reveal-all fab
-  const revealFab = app.querySelector('#revealFab');
-  if(revealFab) revealFab.onclick = () => set({showAllCards:true});
-  const closeReveal = app.querySelector('#closeRevealOverlay');
-  if(closeReveal) closeReveal.onclick = () => set({showAllCards:false});
-  const revealOverlay = app.querySelector('#revealOverlay');
-  if(revealOverlay) revealOverlay.onclick = (e) => {
-    if(e.target === revealOverlay) set({showAllCards:false});
-  };
-}
-
-render();
-
-if('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {
-      /* offline support unavailable, app still works online */
-    });
-  });
-}
-</script>
-</body>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("sw.js").catch(() => {
+            /* offline support unavailable, app still works online */
+          });
+        });
+      }
+    </script>
+  </body>
 </html>
