@@ -201,15 +201,13 @@ function tplNightSleep() {
 }
 
 function tplNightWolves() {
-  const targets = state.players.filter(
-    (p) => p.alive && p.role !== "loup-garou",
-  );
+  const targets = state.players.filter((p) => p.alive);
   return `
     ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>
     <div class="center-icon">🐺</div>
     <h2 class="stitle">Les loups-garous se réveillent</h2>
-    <div class="subtitle">Ils désignent en silence leur victime. Le maître du jeu sélectionne ci-dessous.</div>
+    <div class="subtitle">Ils désignent en silence leur victime, y compris parmi eux si besoin. Le maître du jeu sélectionne ci-dessous.</div>
     <div class="plist">
 ${targets
   .map(
@@ -217,6 +215,7 @@ ${targets
   <div class="pitem ${state.targetId === p.id ? "selected" : ""}" data-target="${p.id}">
     <div class="dot"></div>
     <div class="name">${escapeHtml(p.name)}</div>
+    ${p.role === "loup-garou" ? `<span class="rolebadge loup">Loup</span>` : ""}
   </div>
 `,
   )

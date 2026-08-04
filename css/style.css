@@ -359,6 +359,7 @@ label.field-label {
 .pitem .name {
   font-size: 15px;
   font-weight: 500;
+  flex: 1;
 }
 .pitem-none {
   border-style: dashed;
