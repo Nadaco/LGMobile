@@ -739,16 +739,7 @@ function tplNightReveal(){
     </div>
     <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? 'Cacher la carte' : 'Afficher sa carte'}</button>
 
-    <label class="field-label">Survivants</label>
-    <div class="roster">
-      ${state.players.map(p => `
-        <div class="ritem ${p.alive?'':'dead'}">
-          <span>${escapeHtml(p.name)}</span>
-          ${(!p.alive && (p.roleRevealed || (p.id === state.lastVictimId && state.showVictimCard))) ? `<span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>` : ''}
-        </div>
-      `).join('')}
-    </div>
-
+    <div style="height:8px"></div>
     <button class="btn btn-primary" id="continue-after-reveal">${gameEnds ? 'Voir le résultat' : 'Réveiller le village pour voter'}</button>
   `;
 }

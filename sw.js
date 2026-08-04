@@ -1,6 +1,6 @@
 // Bump this version string every time you change index.html / assets
 // so returning players get the fresh version instead of a stale cache.
-const CACHE_VERSION = 'loup-garou-v2';
+const CACHE_VERSION = 'loup-garou-v4';
 
 const APP_SHELL = [
   './',
@@ -30,11 +30,28 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Cache-first for app shell, falling back to network, and updating the
-// cache in the background so the next launch has the freshest copy.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const isHTML = event.request.mode === 'navigate' ||
+    (event.request.headers.get('accept') || '').includes('text/html');
+
+  if (isHTML) {
+    // Network-first for the app page itself: always try to get the latest
+    // version first, only falling back to the cached copy when offline.
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons, manifest) that rarely change.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const network = fetch(event.request)
