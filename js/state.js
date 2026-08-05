@@ -18,6 +18,7 @@ let state = {
   phase: "setup",
   numPlayers: 5,
   numWolves: 1,
+  numVoyantes: 0,
   deck: [],
   players: [], // {id, name, role, alive}
   distributeIndex: 0,
@@ -26,6 +27,8 @@ let state = {
   targetId: null,
   lastVictimId: null,
   showVictimCard: false,
+  voyanteTargetId: null,
+  voyanteRevealed: false,
   dayTargetId: undefined,
   lastDayVictimId: null,
   showDayVictimCard: false,
@@ -113,9 +116,10 @@ function computePlayerStats() {
       if (!stats[p.name])
         stats[p.name] = { games: 0, winsVillage: 0, winsLoup: 0 };
       stats[p.name].games++;
-      if (g.winner === "villageois" && p.role === "villageois")
+      const team = ROLE_INFO[p.role].team;
+      if (g.winner === "villageois" && team === "village")
         stats[p.name].winsVillage++;
-      if (g.winner === "loups-garous" && p.role === "loup-garou")
+      if (g.winner === "loups-garous" && team === "loups")
         stats[p.name].winsLoup++;
     });
   });
@@ -147,14 +151,26 @@ function maxWolves(n) {
 
 function checkWinner(players) {
   const aliveWolves = players.filter(
-    (p) => p.alive && p.role === "loup-garou",
+    (p) => p.alive && ROLE_INFO[p.role].team === "loups",
   ).length;
-  const aliveVillagers = players.filter(
-    (p) => p.alive && p.role === "villageois",
+  const aliveVillage = players.filter(
+    (p) => p.alive && ROLE_INFO[p.role].team === "village",
   ).length;
   if (aliveWolves === 0) return "villageois";
-  if (aliveWolves >= aliveVillagers) return "loups-garous";
+  if (aliveWolves >= aliveVillage) return "loups-garous";
   return null;
+}
+
+function hasAliveRole(role) {
+  return state.players.some((p) => p.alive && p.role === role);
+}
+
+// Un joueur tué cette nuit par les loups doit encore jouer son propre tour
+// (Voyante, etc.) : sa mort n'est révélée au village qu'au petit matin.
+function canActTonight(role) {
+  return state.players.some(
+    (p) => p.role === role && (p.alive || p.id === state.lastVictimId),
+  );
 }
 
 function set(partial) {
@@ -167,6 +183,7 @@ function resetGame() {
     phase: "setup",
     numPlayers: 5,
     numWolves: 1,
+    numVoyantes: 0,
     deck: [],
     players: [],
     distributeIndex: 0,
@@ -175,6 +192,8 @@ function resetGame() {
     targetId: null,
     lastVictimId: null,
     showVictimCard: false,
+    voyanteTargetId: null,
+    voyanteRevealed: false,
     dayTargetId: undefined,
     lastDayVictimId: null,
     showDayVictimCard: false,

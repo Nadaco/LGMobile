@@ -58,12 +58,23 @@ function tplSetup() {
 <div class="row">
   <div>
     <div class="label">Loups-garous</div>
-    <div class="sub">${state.numPlayers - state.numWolves} villageois restants</div>
+    <div class="sub">${state.numPlayers - state.numWolves - state.numVoyantes} villageois restants</div>
   </div>
   <div class="stepper">
     <button data-act="wolves-">−</button>
     <div class="val">${state.numWolves}</div>
     <button data-act="wolves+">+</button>
+  </div>
+</div>
+<div class="row">
+  <div>
+    <div class="label">Voyante</div>
+    <div class="sub">Regarde le rôle d'un joueur chaque nuit</div>
+  </div>
+  <div class="stepper">
+    <button data-act="voyante-">−</button>
+    <div class="val">${state.numVoyantes}</div>
+    <button data-act="voyante+">+</button>
   </div>
 </div>
     </div>
@@ -225,11 +236,75 @@ ${targets
 }
 
 function tplNightTransition() {
+  const voyanteNext = canActTonight("voyante");
   return `
     ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>
     <div class="center-icon">🌙</div>
     <h2 class="stitle">Les loups-garous se rendorment...</h2>
+    <div class="subtitle">${voyanteNext ? "La voyante va se réveiller." : "Le village va se réveiller."}</div>
+    <button class="btn btn-primary" id="night-transition-continue">${voyanteNext ? "La voyante se réveille" : "Réveiller le village"}</button>
+  `;
+}
+
+function tplNightVoyante() {
+  if (!state.voyanteRevealed) {
+    const targets = state.players.filter(
+      (p) => p.alive || p.id === state.lastVictimId,
+    );
+    return `
+      ${moonSvg("night")}
+      <div class="eyebrow">Nuit ${state.round}</div>
+      <div class="center-icon">🔮</div>
+      <h2 class="stitle">La voyante se réveille</h2>
+      <div class="subtitle">Elle désigne en silence un joueur dont elle veut connaître le rôle. Le maître du jeu sélectionne ci-dessous.</div>
+      <div class="plist">
+${targets
+  .map(
+    (p) => `
+  <div class="pitem ${state.voyanteTargetId === p.id ? "selected" : ""}" data-voyante-target="${p.id}">
+    <div class="dot"></div>
+    <div class="name">${escapeHtml(p.name)}</div>
+  </div>
+`,
+  )
+  .join("")}
+      </div>
+      <button class="btn btn-primary" id="confirm-voyante-target" ${state.voyanteTargetId === null ? "disabled" : ""}>Regarder sa carte</button>
+    `;
+  }
+
+  const target = state.players.find((p) => p.id === state.voyanteTargetId);
+  const info = ROLE_INFO[target.role];
+  return `
+    ${moonSvg("night")}
+    <div class="eyebrow">Nuit ${state.round}</div>
+    <h2 class="stitle">Le rôle de ${escapeHtml(target.name)}</h2>
+    <div class="subtitle">Montrez cette carte à la voyante seule, puis retournez-la avant de continuer.</div>
+    <div class="card-zone">
+<div class="card-flip flipped">
+  <div class="card-inner">
+    <div class="card-face card-front">
+      <div class="glyph">🌒</div>
+      <div class="hint">Toucher pour piocher</div>
+    </div>
+    <div class="card-face card-back role-${info.cls}">
+      <div class="glyph">${info.glyph}</div>
+      <div class="rolename">${info.label}</div>
+    </div>
+  </div>
+</div>
+    </div>
+    <button class="btn btn-primary" id="voyante-done">La voyante se rendort</button>
+  `;
+}
+
+function tplNightVoyanteSleep() {
+  return `
+    ${moonSvg("night")}
+    <div class="eyebrow">Nuit ${state.round}</div>
+    <div class="center-icon">🌙</div>
+    <h2 class="stitle">La voyante se rendort...</h2>
     <div class="subtitle">Le village va se réveiller.</div>
     <button class="btn btn-primary" id="wake-village">Réveiller le village</button>
   `;
