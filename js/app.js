@@ -33,6 +33,12 @@ function render() {
     case "night_transition":
       html = tplNightTransition();
       break;
+    case "night_voyante":
+      html = tplNightVoyante();
+      break;
+    case "night_voyante_sleep":
+      html = tplNightVoyanteSleep();
+      break;
     case "night_reveal":
       html = tplNightReveal();
       break;
@@ -86,6 +92,16 @@ function wire() {
         ),
       });
     };
+  const vMinus = app.querySelector('[data-act="voyante-"]');
+  const vPlus = app.querySelector('[data-act="voyante+"]');
+  if (vMinus)
+    vMinus.onclick = () => {
+      set({ numVoyantes: Math.max(0, state.numVoyantes - 1) });
+    };
+  if (vPlus)
+    vPlus.onclick = () => {
+      set({ numVoyantes: Math.min(1, state.numVoyantes + 1) });
+    };
   const viewStats = app.querySelector("#view-stats");
   if (viewStats) viewStats.onclick = () => set({ phase: "stats" });
   const backToSetup = app.querySelector("#back-to-setup");
@@ -107,7 +123,10 @@ function wire() {
     startDistribute.onclick = () => {
       const roles = shuffle([
         ...Array(state.numWolves).fill("loup-garou"),
-        ...Array(state.numPlayers - state.numWolves).fill("villageois"),
+        ...Array(state.numVoyantes).fill("voyante"),
+        ...Array(
+          state.numPlayers - state.numWolves - state.numVoyantes,
+        ).fill("villageois"),
       ]);
       set({
         deck: roles,
@@ -205,7 +224,36 @@ function wire() {
       });
     };
 
-  // night transition
+  // night transition (after wolves)
+  const transitionContinue = app.querySelector("#night-transition-continue");
+  if (transitionContinue)
+    transitionContinue.onclick = () => {
+      if (canActTonight("voyante")) {
+        set({
+          phase: "night_voyante",
+          voyanteTargetId: null,
+          voyanteRevealed: false,
+        });
+      } else {
+        set({ phase: "night_reveal", showVictimCard: false });
+      }
+    };
+
+  // night voyante
+  app.querySelectorAll("[data-voyante-target]").forEach((el) => {
+    el.onclick = () =>
+      set({
+        voyanteTargetId: Number(el.getAttribute("data-voyante-target")),
+      });
+  });
+  const confirmVoyanteTarget = app.querySelector("#confirm-voyante-target");
+  if (confirmVoyanteTarget)
+    confirmVoyanteTarget.onclick = () => set({ voyanteRevealed: true });
+  const voyanteDone = app.querySelector("#voyante-done");
+  if (voyanteDone)
+    voyanteDone.onclick = () => set({ phase: "night_voyante_sleep" });
+
+  // night voyante sleep
   const wakeVillage = app.querySelector("#wake-village");
   if (wakeVillage)
     wakeVillage.onclick = () =>

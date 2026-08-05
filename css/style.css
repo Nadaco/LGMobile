@@ -278,6 +278,9 @@ h2.stitle {
 .card-back.role-villageois {
   background: linear-gradient(160deg, #2a2c50, #171a3a);
 }
+.card-back.role-voyante {
+  background: linear-gradient(160deg, #3d1a5c, #1c0f30);
+}
 .card-back .glyph {
   font-size: 52px;
   margin-bottom: 10px;
@@ -421,6 +424,10 @@ label.field-label {
 .rolebadge.villageois {
   background: rgba(120, 140, 220, 0.2);
   color: #aab4ee;
+}
+.rolebadge.voyante {
+  background: rgba(155, 89, 220, 0.25);
+  color: #c9a6f5;
 }
 
 .center-icon {
