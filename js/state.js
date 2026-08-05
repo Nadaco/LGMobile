@@ -19,6 +19,7 @@ let state = {
   numPlayers: 5,
   numWolves: 1,
   numVoyantes: 0,
+  numChasseurs: 0,
   deck: [],
   players: [], // {id, name, role, alive}
   distributeIndex: 0,
@@ -32,6 +33,11 @@ let state = {
   dayTargetId: undefined,
   lastDayVictimId: null,
   showDayVictimCard: false,
+  hunterQueue: [], // ids de Chasseurs morts qui doivent encore riposter
+  hunterTargetId: null,
+  hunterContext: null, // "night" | "day" — où renvoyer une fois la riposte résolue
+  extraNightVictims: [], // ids abattus par un Chasseur cette nuit
+  extraDayVictims: [], // ids abattus par un Chasseur ce jour
   showAllCards: false,
   winner: null,
 };
@@ -149,6 +155,33 @@ function maxWolves(n) {
   return Math.max(1, n - 1);
 }
 
+// Ajuste numWolves/numVoyantes/numChasseurs pour qu'ils tiennent toujours
+// dans numPlayers (au moins 0 villageois, jamais de compte négatif).
+function normalizeSetup(next) {
+  const numPlayers = next.numPlayers ?? state.numPlayers;
+  let numWolves = next.numWolves ?? state.numWolves;
+  let numVoyantes = next.numVoyantes ?? state.numVoyantes;
+  let numChasseurs = next.numChasseurs ?? state.numChasseurs;
+
+  numWolves = Math.max(1, Math.min(numWolves, maxWolves(numPlayers)));
+  numVoyantes = Math.max(0, Math.min(1, numVoyantes));
+  numChasseurs = Math.max(0, Math.min(1, numChasseurs));
+
+  let room = numPlayers - numWolves - numVoyantes - numChasseurs;
+  if (room < 0) {
+    const cut = Math.min(numChasseurs, -room);
+    numChasseurs -= cut;
+    room += cut;
+  }
+  if (room < 0) {
+    const cut = Math.min(numVoyantes, -room);
+    numVoyantes -= cut;
+    room += cut;
+  }
+
+  return { numPlayers, numWolves, numVoyantes, numChasseurs };
+}
+
 function checkWinner(players) {
   const aliveWolves = players.filter(
     (p) => p.alive && ROLE_INFO[p.role].team === "loups",
@@ -184,6 +217,7 @@ function resetGame() {
     numPlayers: 5,
     numWolves: 1,
     numVoyantes: 0,
+    numChasseurs: 0,
     deck: [],
     players: [],
     distributeIndex: 0,
@@ -197,6 +231,11 @@ function resetGame() {
     dayTargetId: undefined,
     lastDayVictimId: null,
     showDayVictimCard: false,
+    hunterQueue: [],
+    hunterTargetId: null,
+    hunterContext: null,
+    extraNightVictims: [],
+    extraDayVictims: [],
     showAllCards: false,
     winner: null,
   };

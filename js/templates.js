@@ -58,7 +58,7 @@ function tplSetup() {
 <div class="row">
   <div>
     <div class="label">Loups-garous</div>
-    <div class="sub">${state.numPlayers - state.numWolves - state.numVoyantes} villageois restants</div>
+    <div class="sub">${state.numPlayers - state.numWolves - state.numVoyantes - state.numChasseurs} villageois restants</div>
   </div>
   <div class="stepper">
     <button data-act="wolves-">−</button>
@@ -75,6 +75,17 @@ function tplSetup() {
     <button data-act="voyante-">−</button>
     <div class="val">${state.numVoyantes}</div>
     <button data-act="voyante+">+</button>
+  </div>
+</div>
+<div class="row">
+  <div>
+    <div class="label">Chasseur</div>
+    <div class="sub">En mourant, abat immédiatement un autre joueur</div>
+  </div>
+  <div class="stepper">
+    <button data-act="chasseur-">−</button>
+    <div class="val">${state.numChasseurs}</div>
+    <button data-act="chasseur+">+</button>
   </div>
 </div>
     </div>
@@ -313,6 +324,9 @@ function tplNightVoyanteSleep() {
 function tplNightReveal() {
   const victim = state.players.find((p) => p.id === state.lastVictimId);
   const info = ROLE_INFO[victim.role];
+  const extraVictims = state.extraNightVictims
+    .map((id) => state.players.find((p) => p.id === id))
+    .filter(Boolean);
   const gameEnds = checkWinner(state.players) !== null;
 
   return `
@@ -337,8 +351,52 @@ function tplNightReveal() {
     </div>
     <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
 
+    ${
+extraVictims.length
+  ? `
+<label class="field-label">Autres victimes de la nuit (tir du Chasseur)</label>
+<div class="roster">
+${extraVictims
+  .map(
+    (p) => `
+  <div class="ritem dead">
+    <span>${escapeHtml(p.name)}</span>
+    <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
+  </div>
+`,
+  )
+  .join("")}
+</div>
+`
+  : ""
+    }
+
     <div style="height:8px"></div>
     <button class="btn btn-primary" id="continue-after-reveal">${gameEnds ? "Voir le résultat" : "Passer au vote"}</button>
+  `;
+}
+
+function tplHunterShot(context) {
+  const hunter = state.players.find((p) => p.id === state.hunterQueue[0]);
+  const targets = state.players.filter((p) => p.alive);
+  return `
+    ${moonSvg(context === "night" ? "night" : "gold")}
+    <div class="center-icon">🏹</div>
+    <h2 class="stitle">${escapeHtml(hunter.name)} était le Chasseur</h2>
+    <div class="subtitle">En mourant, il/elle abat aussitôt un autre joueur. Le maître du jeu sélectionne la cible ci-dessous.</div>
+    <div class="plist">
+${targets
+  .map(
+    (p) => `
+  <div class="pitem ${state.hunterTargetId === p.id ? "selected" : ""}" data-hunter-target="${p.id}">
+    <div class="dot"></div>
+    <div class="name">${escapeHtml(p.name)}</div>
+  </div>
+`,
+  )
+  .join("")}
+    </div>
+    <button class="btn btn-primary" id="confirm-hunter-target" ${state.hunterTargetId === null ? "disabled" : ""}>Confirmer le tir</button>
   `;
 }
 
@@ -376,6 +434,9 @@ function tplDayReveal() {
     ? state.players.find((p) => p.id === state.lastDayVictimId)
     : null;
   const info = hasVictim ? ROLE_INFO[victim.role] : null;
+  const extraVictims = state.extraDayVictims
+    .map((id) => state.players.find((p) => p.id === id))
+    .filter(Boolean);
   const gameEnds = checkWinner(state.players) !== null;
 
   return `
@@ -408,6 +469,26 @@ hasVictim
 </div>
 <button class="btn btn-ghost" id="toggle-day-victim-card">${state.showDayVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
     `
+  : ""
+    }
+
+    ${
+extraVictims.length
+  ? `
+<label class="field-label">Autres victimes du jour (tir du Chasseur)</label>
+<div class="roster">
+${extraVictims
+  .map(
+    (p) => `
+  <div class="ritem dead">
+    <span>${escapeHtml(p.name)}</span>
+    <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
+  </div>
+`,
+  )
+  .join("")}
+</div>
+`
   : ""
     }
 

@@ -12,4 +12,5 @@ const ROLE_INFO = {
   "loup-garou": { label: "Loup-Garou", glyph: "🐺", cls: "loup", team: "loups" },
   villageois: { label: "Villageois", glyph: "🌾", cls: "villageois", team: "village" },
   voyante: { label: "Voyante", glyph: "🔮", cls: "voyante", team: "village" },
+  chasseur: { label: "Chasseur", glyph: "🏹", cls: "chasseur", team: "village" },
 };

@@ -39,8 +39,14 @@ function render() {
     case "night_voyante_sleep":
       html = tplNightVoyanteSleep();
       break;
+    case "night_hunter":
+      html = tplHunterShot("night");
+      break;
     case "night_reveal":
       html = tplNightReveal();
+      break;
+    case "day_hunter":
+      html = tplHunterShot("day");
       break;
     case "day_vote":
       html = tplDayVote();
@@ -62,6 +68,47 @@ function render() {
   wire();
 }
 
+// Résout le tir de riposte du Chasseur en tête de hunterQueue, puis
+// enchaîne sur le Chasseur suivant si son tir en abat un autre, ou
+// continue vers l'écran de révélation (nuit ou jour).
+function resolveHunterShot(context) {
+  const targetId = state.hunterTargetId;
+  const players = state.players.map((p) =>
+    p.id === targetId ? { ...p, alive: false } : p,
+  );
+  const shotPlayer = players.find((p) => p.id === targetId);
+  const restQueue = state.hunterQueue.slice(1);
+  const newQueue =
+    shotPlayer.role === "chasseur"
+      ? [...restQueue, shotPlayer.id]
+      : restQueue;
+  const extraKey =
+    context === "night" ? "extraNightVictims" : "extraDayVictims";
+  // Une seule mise à jour : hunterQueue et phase doivent changer ensemble,
+  // sinon un rendu intermédiaire (queue déjà vide, phase encore "*_hunter")
+  // fait planter tplHunterShot() qui attend un chasseur en tête de file.
+  set({
+    players,
+    hunterQueue: newQueue,
+    [extraKey]: [...state[extraKey], targetId],
+    hunterTargetId: null,
+    ...nextHunterPhase(newQueue, context),
+  });
+}
+
+function nextHunterPhase(queue, context) {
+  if (queue.length > 0) {
+    return { phase: context === "night" ? "night_hunter" : "day_hunter" };
+  }
+  return context === "night"
+    ? { phase: "night_reveal", showVictimCard: false }
+    : { phase: "day_reveal", showDayVictimCard: false };
+}
+
+function advanceHunterOrReveal(context) {
+  set(nextHunterPhase(state.hunterQueue, context));
+}
+
 function wire() {
   // setup
   const pMinus = app.querySelector('[data-act="players-"]');
@@ -70,37 +117,39 @@ function wire() {
   const wPlus = app.querySelector('[data-act="wolves+"]');
   if (pMinus)
     pMinus.onclick = () => {
-      const n = Math.max(3, state.numPlayers - 1);
-      const w = Math.min(state.numWolves, maxWolves(n));
-      set({ numPlayers: n, numWolves: w });
+      set(normalizeSetup({ numPlayers: Math.max(3, state.numPlayers - 1) }));
     };
   if (pPlus)
     pPlus.onclick = () => {
-      const n = Math.min(20, state.numPlayers + 1);
-      set({ numPlayers: n });
+      set(normalizeSetup({ numPlayers: Math.min(20, state.numPlayers + 1) }));
     };
   if (wMinus)
     wMinus.onclick = () => {
-      set({ numWolves: Math.max(1, state.numWolves - 1) });
+      set(normalizeSetup({ numWolves: state.numWolves - 1 }));
     };
   if (wPlus)
     wPlus.onclick = () => {
-      set({
-        numWolves: Math.min(
-          maxWolves(state.numPlayers),
-          state.numWolves + 1,
-        ),
-      });
+      set(normalizeSetup({ numWolves: state.numWolves + 1 }));
     };
   const vMinus = app.querySelector('[data-act="voyante-"]');
   const vPlus = app.querySelector('[data-act="voyante+"]');
   if (vMinus)
     vMinus.onclick = () => {
-      set({ numVoyantes: Math.max(0, state.numVoyantes - 1) });
+      set(normalizeSetup({ numVoyantes: state.numVoyantes - 1 }));
     };
   if (vPlus)
     vPlus.onclick = () => {
-      set({ numVoyantes: Math.min(1, state.numVoyantes + 1) });
+      set(normalizeSetup({ numVoyantes: state.numVoyantes + 1 }));
+    };
+  const cMinus = app.querySelector('[data-act="chasseur-"]');
+  const cPlus = app.querySelector('[data-act="chasseur+"]');
+  if (cMinus)
+    cMinus.onclick = () => {
+      set(normalizeSetup({ numChasseurs: state.numChasseurs - 1 }));
+    };
+  if (cPlus)
+    cPlus.onclick = () => {
+      set(normalizeSetup({ numChasseurs: state.numChasseurs + 1 }));
     };
   const viewStats = app.querySelector("#view-stats");
   if (viewStats) viewStats.onclick = () => set({ phase: "stats" });
@@ -124,8 +173,12 @@ function wire() {
       const roles = shuffle([
         ...Array(state.numWolves).fill("loup-garou"),
         ...Array(state.numVoyantes).fill("voyante"),
+        ...Array(state.numChasseurs).fill("chasseur"),
         ...Array(
-          state.numPlayers - state.numWolves - state.numVoyantes,
+          state.numPlayers -
+            state.numWolves -
+            state.numVoyantes -
+            state.numChasseurs,
         ).fill("villageois"),
       ]);
       set({
@@ -217,9 +270,13 @@ function wire() {
       const players = state.players.map((p) =>
         p.id === state.targetId ? { ...p, alive: false } : p,
       );
+      const victim = players.find((p) => p.id === state.targetId);
       set({
         players,
         lastVictimId: state.targetId,
+        extraNightVictims: [],
+        hunterQueue: victim.role === "chasseur" ? [victim.id] : [],
+        hunterContext: "night",
         phase: "night_transition",
       });
     };
@@ -235,7 +292,7 @@ function wire() {
           voyanteRevealed: false,
         });
       } else {
-        set({ phase: "night_reveal", showVictimCard: false });
+        advanceHunterOrReveal("night");
       }
     };
 
@@ -255,9 +312,16 @@ function wire() {
 
   // night voyante sleep
   const wakeVillage = app.querySelector("#wake-village");
-  if (wakeVillage)
-    wakeVillage.onclick = () =>
-      set({ phase: "night_reveal", showVictimCard: false });
+  if (wakeVillage) wakeVillage.onclick = () => advanceHunterOrReveal("night");
+
+  // hunter (chasseur) shot — nuit ou jour, déclenché quand un Chasseur meurt
+  app.querySelectorAll("[data-hunter-target]").forEach((el) => {
+    el.onclick = () =>
+      set({ hunterTargetId: Number(el.getAttribute("data-hunter-target")) });
+  });
+  const confirmHunterTarget = app.querySelector("#confirm-hunter-target");
+  if (confirmHunterTarget)
+    confirmHunterTarget.onclick = () => resolveHunterShot(state.hunterContext);
 
   // night reveal
   const toggleCard = app.querySelector("#toggle-victim-card");
@@ -267,8 +331,9 @@ function wire() {
   const continueBtn = app.querySelector("#continue-after-reveal");
   if (continueBtn)
     continueBtn.onclick = () => {
+      const deadIds = [state.lastVictimId, ...state.extraNightVictims];
       const players = state.players.map((p) =>
-        p.id === state.lastVictimId ? { ...p, roleRevealed: true } : p,
+        deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
       );
       const winner = checkWinner(players);
       if (winner) {
@@ -293,17 +358,25 @@ function wire() {
         set({
           lastDayVictimId: null,
           showDayVictimCard: false,
+          extraDayVictims: [],
+          hunterQueue: [],
+          hunterContext: "day",
           phase: "day_reveal",
         });
       } else {
         const players = state.players.map((p) =>
           p.id === state.dayTargetId ? { ...p, alive: false } : p,
         );
+        const victim = players.find((p) => p.id === state.dayTargetId);
+        const hunterQueue = victim.role === "chasseur" ? [victim.id] : [];
         set({
           players,
           lastDayVictimId: state.dayTargetId,
           showDayVictimCard: false,
-          phase: "day_reveal",
+          extraDayVictims: [],
+          hunterQueue,
+          hunterContext: "day",
+          phase: hunterQueue.length > 0 ? "day_hunter" : "day_reveal",
         });
       }
     };
@@ -316,14 +389,15 @@ function wire() {
   const continueAfterDay = app.querySelector("#continue-after-day");
   if (continueAfterDay)
     continueAfterDay.onclick = () => {
-      const players =
+      const deadIds =
         state.lastDayVictimId !== null
-          ? state.players.map((p) =>
-              p.id === state.lastDayVictimId
-                ? { ...p, roleRevealed: true }
-                : p,
-            )
-          : state.players;
+          ? [state.lastDayVictimId, ...state.extraDayVictims]
+          : [];
+      const players = deadIds.length
+        ? state.players.map((p) =>
+            deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
+          )
+        : state.players;
       const winner = checkWinner(players);
       if (winner) {
         recordGameResult(players, winner, state.round);
