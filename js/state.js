@@ -28,6 +28,7 @@ let state = {
   targetId: null,
   lastVictimId: null,
   showVictimCard: false,
+  voyanteQueue: [], // ids des voyantes qui n'ont pas encore regardé une carte cette nuit
   voyanteTargetId: null,
   voyanteRevealed: false,
   dayTargetId: undefined,
@@ -169,20 +170,27 @@ function normalizeSetup(next) {
     next.numVillageois ?? state.numVillageois,
   );
   let numWolves = Math.max(1, next.numWolves ?? state.numWolves);
-  let numVoyantes = Math.max(
-    0,
-    Math.min(1, next.numVoyantes ?? state.numVoyantes),
-  );
-  let numChasseurs = Math.max(
-    0,
-    Math.min(1, next.numChasseurs ?? state.numChasseurs),
-  );
+  let numVoyantes = Math.max(0, next.numVoyantes ?? state.numVoyantes);
+  let numChasseurs = Math.max(0, next.numChasseurs ?? state.numChasseurs);
 
   const villageTeam = () => numVillageois + numVoyantes + numChasseurs;
 
   let total = villageTeam() + numWolves;
   if (total > 20) numVillageois = Math.max(0, numVillageois - (total - 20));
   if (total < 3) numVillageois += 3 - total;
+
+  // Si les villageois seuls (déjà à 0) ne suffisent pas à revenir sous la
+  // limite, c'est qu'il y a trop de rôles spéciaux : on les réduit en
+  // dernier recours plutôt que de dépasser 20 joueurs.
+  total = villageTeam() + numWolves;
+  if (total > 20) {
+    let overflow = total - 20;
+    const cutChasseurs = Math.min(numChasseurs, overflow);
+    numChasseurs -= cutChasseurs;
+    overflow -= cutChasseurs;
+    const cutVoyantes = Math.min(numVoyantes, overflow);
+    numVoyantes -= cutVoyantes;
+  }
 
   numWolves = Math.min(numWolves, Math.max(1, villageTeam()));
 
@@ -204,16 +212,13 @@ function checkWinner(players) {
   return null;
 }
 
-function hasAliveRole(role) {
-  return state.players.some((p) => p.alive && p.role === role);
-}
-
-// Un joueur tué cette nuit par les loups doit encore jouer son propre tour
-// (Voyante, etc.) : sa mort n'est révélée au village qu'au petit matin.
-function canActTonight(role) {
-  return state.players.some(
-    (p) => p.role === role && (p.alive || p.id === state.lastVictimId),
-  );
+// Ids des joueurs d'un rôle qui peuvent encore agir cette nuit : vivants,
+// ou tués cette nuit-même par les loups (leur mort n'est révélée au
+// village qu'au petit matin, ils jouent donc quand même leur tour).
+function actingRoleIds(role) {
+  return state.players
+    .filter((p) => p.role === role && (p.alive || p.id === state.lastVictimId))
+    .map((p) => p.id);
 }
 
 function set(partial) {
@@ -236,6 +241,7 @@ function resetGame() {
     targetId: null,
     lastVictimId: null,
     showVictimCard: false,
+    voyanteQueue: [],
     voyanteTargetId: null,
     voyanteRevealed: false,
     dayTargetId: undefined,
