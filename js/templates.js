@@ -37,28 +37,30 @@ function moonSvg(mode) {
 /* ---------- templates per phase ---------- */
 
 function tplSetup() {
-  const wolvesMax = maxWolves(state.numPlayers);
+  const total = totalPlayers();
   return `
     ${moonSvg("calm")}
     <div class="eyebrow">Partie locale · 1 téléphone</div>
     <h1 class="title">Loup-Garou</h1>
 
+    <div class="progress">${total} joueur${total > 1 ? "s" : ""} autour de la table</div>
+
     <div class="panel">
 <div class="row">
   <div>
-    <div class="label">Joueurs</div>
-    <div class="sub">Nombre de personnes autour de la table</div>
+    <div class="label">Villageois</div>
+    <div class="sub">Aucun pouvoir particulier</div>
   </div>
   <div class="stepper">
-    <button data-act="players-" >−</button>
-    <div class="val">${state.numPlayers}</div>
-    <button data-act="players+">+</button>
+    <button data-act="villageois-">−</button>
+    <div class="val">${state.numVillageois}</div>
+    <button data-act="villageois+">+</button>
   </div>
 </div>
 <div class="row">
   <div>
     <div class="label">Loups-garous</div>
-    <div class="sub">${state.numPlayers - state.numWolves - state.numVoyantes - state.numChasseurs} villageois restants</div>
+    <div class="sub">Élimine un joueur chaque nuit</div>
   </div>
   <div class="stepper">
     <button data-act="wolves-">−</button>
@@ -154,12 +156,12 @@ function tplDistribute() {
   const i = state.distributeIndex;
   const role = state.deck[i];
   const info = ROLE_INFO[role];
-  const isLast = i === state.numPlayers - 1;
+  const isLast = i === state.deck.length - 1;
 
   if (!state.revealed) {
     return `
 ${moonSvg("calm")}
-<div class="progress">Joueur ${i + 1} / ${state.numPlayers}</div>
+<div class="progress">Joueur ${i + 1} / ${state.deck.length}</div>
 <h2 class="stitle">Passez le téléphone</h2>
 <div class="subtitle">Au joueur suivant. Il touche la carte pour découvrir son rôle en secret.</div>
 <div class="card-zone">
@@ -181,7 +183,7 @@ ${moonSvg("calm")}
 
   return `
     ${moonSvg("calm")}
-    <div class="progress">Joueur ${i + 1} / ${state.numPlayers}</div>
+    <div class="progress">Joueur ${i + 1} / ${state.deck.length}</div>
     <h2 class="stitle">Votre carte</h2>
     <div class="subtitle">Retenez votre rôle, puis inscrivez votre nom pour la valider.</div>
     <div class="card-zone">

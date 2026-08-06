@@ -138,17 +138,17 @@ function resolveHunterShot(context) {
 
 function wire() {
   // setup
-  const pMinus = app.querySelector('[data-act="players-"]');
-  const pPlus = app.querySelector('[data-act="players+"]');
+  const villMinus = app.querySelector('[data-act="villageois-"]');
+  const villPlus = app.querySelector('[data-act="villageois+"]');
   const wMinus = app.querySelector('[data-act="wolves-"]');
   const wPlus = app.querySelector('[data-act="wolves+"]');
-  if (pMinus)
-    pMinus.onclick = () => {
-      set(normalizeSetup({ numPlayers: Math.max(3, state.numPlayers - 1) }));
+  if (villMinus)
+    villMinus.onclick = () => {
+      set(normalizeSetup({ numVillageois: state.numVillageois - 1 }));
     };
-  if (pPlus)
-    pPlus.onclick = () => {
-      set(normalizeSetup({ numPlayers: Math.min(20, state.numPlayers + 1) }));
+  if (villPlus)
+    villPlus.onclick = () => {
+      set(normalizeSetup({ numVillageois: state.numVillageois + 1 }));
     };
   if (wMinus)
     wMinus.onclick = () => {
@@ -201,12 +201,7 @@ function wire() {
         ...Array(state.numWolves).fill("loup-garou"),
         ...Array(state.numVoyantes).fill("voyante"),
         ...Array(state.numChasseurs).fill("chasseur"),
-        ...Array(
-          state.numPlayers -
-            state.numWolves -
-            state.numVoyantes -
-            state.numChasseurs,
-        ).fill("villageois"),
+        ...Array(state.numVillageois).fill("villageois"),
       ]);
       set({
         deck: roles,
@@ -260,7 +255,7 @@ function wire() {
         },
       ];
       const nextIndex = state.distributeIndex + 1;
-      if (nextIndex >= state.numPlayers) {
+      if (nextIndex >= state.deck.length) {
         rememberNames(newPlayers);
         set({
           players: newPlayers,
