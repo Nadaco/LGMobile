@@ -37,28 +37,30 @@ function moonSvg(mode) {
 /* ---------- templates per phase ---------- */
 
 function tplSetup() {
-  const wolvesMax = maxWolves(state.numPlayers);
+  const total = totalPlayers();
   return `
     ${moonSvg("calm")}
     <div class="eyebrow">Partie locale · 1 téléphone</div>
     <h1 class="title">Loup-Garou</h1>
 
+    <div class="progress">${total} joueur${total > 1 ? "s" : ""} autour de la table</div>
+
     <div class="panel">
 <div class="row">
   <div>
-    <div class="label">Joueurs</div>
-    <div class="sub">Nombre de personnes autour de la table</div>
+    <div class="label">Villageois</div>
+    <div class="sub">Aucun pouvoir particulier</div>
   </div>
   <div class="stepper">
-    <button data-act="players-" >−</button>
-    <div class="val">${state.numPlayers}</div>
-    <button data-act="players+">+</button>
+    <button data-act="villageois-">−</button>
+    <div class="val">${state.numVillageois}</div>
+    <button data-act="villageois+">+</button>
   </div>
 </div>
 <div class="row">
   <div>
     <div class="label">Loups-garous</div>
-    <div class="sub">${state.numPlayers - state.numWolves - state.numVoyantes} villageois restants</div>
+    <div class="sub">Élimine un joueur chaque nuit</div>
   </div>
   <div class="stepper">
     <button data-act="wolves-">−</button>
@@ -75,6 +77,17 @@ function tplSetup() {
     <button data-act="voyante-">−</button>
     <div class="val">${state.numVoyantes}</div>
     <button data-act="voyante+">+</button>
+  </div>
+</div>
+<div class="row">
+  <div>
+    <div class="label">Chasseur</div>
+    <div class="sub">En mourant, abat immédiatement un autre joueur</div>
+  </div>
+  <div class="stepper">
+    <button data-act="chasseur-">−</button>
+    <div class="val">${state.numChasseurs}</div>
+    <button data-act="chasseur+">+</button>
   </div>
 </div>
     </div>
@@ -143,12 +156,12 @@ function tplDistribute() {
   const i = state.distributeIndex;
   const role = state.deck[i];
   const info = ROLE_INFO[role];
-  const isLast = i === state.numPlayers - 1;
+  const isLast = i === state.deck.length - 1;
 
   if (!state.revealed) {
     return `
 ${moonSvg("calm")}
-<div class="progress">Joueur ${i + 1} / ${state.numPlayers}</div>
+<div class="progress">Joueur ${i + 1} / ${state.deck.length}</div>
 <h2 class="stitle">Passez le téléphone</h2>
 <div class="subtitle">Au joueur suivant. Il touche la carte pour découvrir son rôle en secret.</div>
 <div class="card-zone">
@@ -170,7 +183,7 @@ ${moonSvg("calm")}
 
   return `
     ${moonSvg("calm")}
-    <div class="progress">Joueur ${i + 1} / ${state.numPlayers}</div>
+    <div class="progress">Joueur ${i + 1} / ${state.deck.length}</div>
     <h2 class="stitle">Votre carte</h2>
     <div class="subtitle">Retenez votre rôle, puis inscrivez votre nom pour la valider.</div>
     <div class="card-zone">
@@ -313,7 +326,10 @@ function tplNightVoyanteSleep() {
 function tplNightReveal() {
   const victim = state.players.find((p) => p.id === state.lastVictimId);
   const info = ROLE_INFO[victim.role];
-  const gameEnds = checkWinner(state.players) !== null;
+  // Si la victime est le Chasseur, sa riposte peut encore changer l'issue :
+  // ne pas annoncer "Voir le résultat" avant qu'elle ait eu lieu.
+  const gameEnds =
+    victim.role !== "chasseur" && checkWinner(state.players) !== null;
 
   return `
     ${moonSvg("blood")}
@@ -339,6 +355,70 @@ function tplNightReveal() {
 
     <div style="height:8px"></div>
     <button class="btn btn-primary" id="continue-after-reveal">${gameEnds ? "Voir le résultat" : "Passer au vote"}</button>
+  `;
+}
+
+function tplHunterShot(context) {
+  const hunter = state.players.find((p) => p.id === state.hunterQueue[0]);
+  const targets = state.players.filter((p) => p.alive);
+  return `
+    ${moonSvg(context === "night" ? "night" : "gold")}
+    <div class="center-icon">🏹</div>
+    <h2 class="stitle">${escapeHtml(hunter.name)} était le Chasseur</h2>
+    <div class="subtitle">En mourant, il/elle abat aussitôt un autre joueur. Le maître du jeu sélectionne la cible ci-dessous.</div>
+    <div class="plist">
+${targets
+  .map(
+    (p) => `
+  <div class="pitem ${state.hunterTargetId === p.id ? "selected" : ""}" data-hunter-target="${p.id}">
+    <div class="dot"></div>
+    <div class="name">${escapeHtml(p.name)}</div>
+  </div>
+`,
+  )
+  .join("")}
+    </div>
+    <button class="btn btn-primary" id="confirm-hunter-target" ${state.hunterTargetId === null ? "disabled" : ""}>Confirmer le tir</button>
+  `;
+}
+
+function tplHunterVictimReveal(context) {
+  const victim = state.players.find((p) => p.id === state.lastHunterVictimId);
+  const info = ROLE_INFO[victim.role];
+  const hasNext = state.hunterQueue.length > 0;
+  const gameEnds = !hasNext && checkWinner(state.players) !== null;
+  const continueLabel = hasNext
+    ? "Le Chasseur suivant riposte"
+    : gameEnds
+      ? "Voir le résultat"
+      : context === "night"
+        ? "Passer au vote"
+        : "Nuit suivante";
+
+  return `
+    ${moonSvg(context === "night" ? "blood" : "gold")}
+    <div class="center-icon">🏹</div>
+    <h2 class="stitle">La riposte du Chasseur</h2>
+    <div class="subtitle">En mourant, le Chasseur a abattu <strong>${escapeHtml(victim.name)}</strong>.</div>
+
+    <div class="card-zone">
+<div class="card-flip ${state.showHunterVictimCard ? "flipped" : ""}">
+  <div class="card-inner">
+    <div class="card-face card-front">
+      <div class="glyph">🌒</div>
+      <div class="hint">Carte de ${escapeHtml(victim.name)}</div>
+    </div>
+    <div class="card-face card-back role-${info.cls}">
+      <div class="glyph">${info.glyph}</div>
+      <div class="rolename">${info.label}</div>
+    </div>
+  </div>
+</div>
+    </div>
+    <button class="btn btn-ghost" id="toggle-hunter-victim-card">${state.showHunterVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
+
+    <div style="height:8px"></div>
+    <button class="btn btn-primary" id="continue-after-hunter-reveal">${continueLabel}</button>
   `;
 }
 
@@ -376,7 +456,11 @@ function tplDayReveal() {
     ? state.players.find((p) => p.id === state.lastDayVictimId)
     : null;
   const info = hasVictim ? ROLE_INFO[victim.role] : null;
-  const gameEnds = checkWinner(state.players) !== null;
+  // Si la victime est le Chasseur, sa riposte peut encore changer l'issue :
+  // ne pas annoncer "Voir le résultat" avant qu'elle ait eu lieu.
+  const gameEnds =
+    (!hasVictim || victim.role !== "chasseur") &&
+    checkWinner(state.players) !== null;
 
   return `
     ${moonSvg("gold")}

@@ -4,7 +4,7 @@
  * Contient :
  *  - `state` : l'état courant de la partie (source unique de vérité)
  *  - `set()` / `resetGame()` : les seules façons de modifier `state`
- *  - helpers de jeu : shuffle, maxWolves, checkWinner
+ *  - helpers de jeu : shuffle, totalPlayers, normalizeSetup, checkWinner
  *  - persistance localStorage : historique des parties, noms récents
  *
  * Dépend de : ROLE_INFO (js/roles.js) — pas de dépendance directe ici,
@@ -16,9 +16,10 @@
 
 let state = {
   phase: "setup",
-  numPlayers: 5,
+  numVillageois: 4,
   numWolves: 1,
   numVoyantes: 0,
+  numChasseurs: 0,
   deck: [],
   players: [], // {id, name, role, alive}
   distributeIndex: 0,
@@ -32,6 +33,11 @@ let state = {
   dayTargetId: undefined,
   lastDayVictimId: null,
   showDayVictimCard: false,
+  hunterQueue: [], // ids de Chasseurs morts qui doivent encore riposter
+  hunterTargetId: null,
+  hunterContext: null, // "night" | "day" — où renvoyer une fois la riposte résolue
+  lastHunterVictimId: null,
+  showHunterVictimCard: false,
   showAllCards: false,
   winner: null,
 };
@@ -145,8 +151,45 @@ function shuffle(arr) {
   return a;
 }
 
-function maxWolves(n) {
-  return Math.max(1, n - 1);
+// Nombre total de joueurs autour de la table, déduit des compteurs de rôles
+// (le nombre de villageois est la variable réglée directement en configuration).
+function totalPlayers() {
+  return (
+    state.numVillageois + state.numWolves + state.numVoyantes + state.numChasseurs
+  );
+}
+
+// Ajuste numVillageois/numWolves/numVoyantes/numChasseurs pour rester
+// cohérents entre eux : entre 3 et 20 joueurs au total, et les loups ne
+// doivent jamais être aussi ou plus nombreux que le reste du village.
+// Les villageois absorbent les ajustements (comme le faisait numPlayers).
+function normalizeSetup(next) {
+  let numVillageois = Math.max(
+    0,
+    next.numVillageois ?? state.numVillageois,
+  );
+  let numWolves = Math.max(1, next.numWolves ?? state.numWolves);
+  let numVoyantes = Math.max(
+    0,
+    Math.min(1, next.numVoyantes ?? state.numVoyantes),
+  );
+  let numChasseurs = Math.max(
+    0,
+    Math.min(1, next.numChasseurs ?? state.numChasseurs),
+  );
+
+  const villageTeam = () => numVillageois + numVoyantes + numChasseurs;
+
+  let total = villageTeam() + numWolves;
+  if (total > 20) numVillageois = Math.max(0, numVillageois - (total - 20));
+  if (total < 3) numVillageois += 3 - total;
+
+  numWolves = Math.min(numWolves, Math.max(1, villageTeam()));
+
+  total = villageTeam() + numWolves;
+  if (total < 3) numVillageois += 3 - total;
+
+  return { numVillageois, numWolves, numVoyantes, numChasseurs };
 }
 
 function checkWinner(players) {
@@ -181,9 +224,10 @@ function set(partial) {
 function resetGame() {
   state = {
     phase: "setup",
-    numPlayers: 5,
+    numVillageois: 4,
     numWolves: 1,
     numVoyantes: 0,
+    numChasseurs: 0,
     deck: [],
     players: [],
     distributeIndex: 0,
@@ -197,6 +241,11 @@ function resetGame() {
     dayTargetId: undefined,
     lastDayVictimId: null,
     showDayVictimCard: false,
+    hunterQueue: [],
+    hunterTargetId: null,
+    hunterContext: null,
+    lastHunterVictimId: null,
+    showHunterVictimCard: false,
     showAllCards: false,
     winner: null,
   };

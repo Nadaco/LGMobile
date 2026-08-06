@@ -281,6 +281,9 @@ h2.stitle {
 .card-back.role-voyante {
   background: linear-gradient(160deg, #3d1a5c, #1c0f30);
 }
+.card-back.role-chasseur {
+  background: linear-gradient(160deg, #5c3d1a, #301f0f);
+}
 .card-back .glyph {
   font-size: 52px;
   margin-bottom: 10px;
@@ -428,6 +431,10 @@ label.field-label {
 .rolebadge.voyante {
   background: rgba(155, 89, 220, 0.25);
   color: #c9a6f5;
+}
+.rolebadge.chasseur {
+  background: rgba(220, 149, 89, 0.25);
+  color: #f5b96a;
 }
 
 .center-icon {
