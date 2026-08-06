@@ -158,26 +158,31 @@ function wire() {
     wPlus.onclick = () => {
       set(normalizeSetup({ numWolves: state.numWolves + 1 }));
     };
-  const vMinus = app.querySelector('[data-act="voyante-"]');
-  const vPlus = app.querySelector('[data-act="voyante+"]');
-  if (vMinus)
-    vMinus.onclick = () => {
-      set(normalizeSetup({ numVoyantes: state.numVoyantes - 1 }));
+  // Rôles spéciaux : une puce = un rôle, un clic bascule 0/1. Ajouter un
+  // rôle spécial ici + dans SPECIAL_ROLES (js/templates.js) suffit à le
+  // faire apparaître dans la configuration.
+  const SPECIAL_ROLE_FIELDS = {
+    voyante: "numVoyantes",
+    chasseur: "numChasseurs",
+  };
+  app.querySelectorAll("[data-role-add]").forEach((el) => {
+    el.onclick = () => {
+      const field = SPECIAL_ROLE_FIELDS[el.getAttribute("data-role-add")];
+      set(normalizeSetup({ [field]: 1 }));
     };
-  if (vPlus)
-    vPlus.onclick = () => {
-      set(normalizeSetup({ numVoyantes: state.numVoyantes + 1 }));
+  });
+  app.querySelectorAll("[data-role-inc]").forEach((el) => {
+    el.onclick = () => {
+      const field = SPECIAL_ROLE_FIELDS[el.getAttribute("data-role-inc")];
+      set(normalizeSetup({ [field]: state[field] + 1 }));
     };
-  const cMinus = app.querySelector('[data-act="chasseur-"]');
-  const cPlus = app.querySelector('[data-act="chasseur+"]');
-  if (cMinus)
-    cMinus.onclick = () => {
-      set(normalizeSetup({ numChasseurs: state.numChasseurs - 1 }));
+  });
+  app.querySelectorAll("[data-role-dec]").forEach((el) => {
+    el.onclick = () => {
+      const field = SPECIAL_ROLE_FIELDS[el.getAttribute("data-role-dec")];
+      set(normalizeSetup({ [field]: state[field] - 1 }));
     };
-  if (cPlus)
-    cPlus.onclick = () => {
-      set(normalizeSetup({ numChasseurs: state.numChasseurs + 1 }));
-    };
+  });
   const viewStats = app.querySelector("#view-stats");
   if (viewStats) viewStats.onclick = () => set({ phase: "stats" });
   const backToSetup = app.querySelector("#back-to-setup");
@@ -303,9 +308,11 @@ function wire() {
   const transitionContinue = app.querySelector("#night-transition-continue");
   if (transitionContinue)
     transitionContinue.onclick = () => {
-      if (canActTonight("voyante")) {
+      const voyantes = actingRoleIds("voyante");
+      if (voyantes.length > 0) {
         set({
           phase: "night_voyante",
+          voyanteQueue: voyantes,
           voyanteTargetId: null,
           voyanteRevealed: false,
         });
@@ -326,7 +333,19 @@ function wire() {
     confirmVoyanteTarget.onclick = () => set({ voyanteRevealed: true });
   const voyanteDone = app.querySelector("#voyante-done");
   if (voyanteDone)
-    voyanteDone.onclick = () => set({ phase: "night_voyante_sleep" });
+    voyanteDone.onclick = () => {
+      const restQueue = state.voyanteQueue.slice(1);
+      if (restQueue.length > 0) {
+        set({
+          voyanteQueue: restQueue,
+          voyanteTargetId: null,
+          voyanteRevealed: false,
+          phase: "night_voyante",
+        });
+      } else {
+        set({ voyanteQueue: restQueue, phase: "night_voyante_sleep" });
+      }
+    };
 
   // night voyante sleep
   const wakeVillage = app.querySelector("#wake-village");

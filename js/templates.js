@@ -36,6 +36,16 @@ function moonSvg(mode) {
 
 /* ---------- templates per phase ---------- */
 
+// Rôles optionnels proposés sous forme de puces dans la configuration.
+// Ajouter un rôle spécial ici (+ sa case dans SPECIAL_ROLE_FIELDS côté
+// app.js) suffit pour qu'il apparaisse, sans toucher au reste de l'écran —
+// ça reste la seule liste à tenir à jour tant que la partie n'est pas
+// encore réglable à plus d'un exemplaire par rôle spécial.
+const SPECIAL_ROLES = [
+  { key: "voyante", count: () => state.numVoyantes },
+  { key: "chasseur", count: () => state.numChasseurs },
+];
+
 function tplSetup() {
   const total = totalPlayers();
   return `
@@ -68,28 +78,32 @@ function tplSetup() {
     <button data-act="wolves+">+</button>
   </div>
 </div>
-<div class="row">
-  <div>
-    <div class="label">Voyante</div>
-    <div class="sub">Regarde le rôle d'un joueur chaque nuit</div>
+    </div>
+
+    <label class="field-label">Rôles spéciaux</label>
+    <div class="role-chip-grid">
+${SPECIAL_ROLES.map((r) => {
+  const info = ROLE_INFO[r.key];
+  const count = r.count();
+  if (count === 0) {
+    return `
+  <button class="role-chip" data-role-add="${r.key}">
+    <span class="chip-glyph">${info.glyph}</span>
+    <span class="chip-label">${info.label}</span>
+  </button>
+`;
+  }
+  return `
+  <div class="role-chip active ${info.cls}">
+    <button class="chip-step" data-role-dec="${r.key}">−</button>
+    <span class="chip-glyph">${info.glyph}</span>
+    <span class="chip-label">${info.label}</span>
+    <span class="chip-count">${count}</span>
+    <button class="chip-step" data-role-inc="${r.key}">+</button>
   </div>
-  <div class="stepper">
-    <button data-act="voyante-">−</button>
-    <div class="val">${state.numVoyantes}</div>
-    <button data-act="voyante+">+</button>
-  </div>
-</div>
-<div class="row">
-  <div>
-    <div class="label">Chasseur</div>
-    <div class="sub">En mourant, abat immédiatement un autre joueur</div>
-  </div>
-  <div class="stepper">
-    <button data-act="chasseur-">−</button>
-    <div class="val">${state.numChasseurs}</div>
-    <button data-act="chasseur+">+</button>
-  </div>
-</div>
+`;
+})
+  .join("")}
     </div>
 
     <div class="subtitle">Chaque joueur passera le téléphone à son tour pour piocher sa carte et inscrire son nom.</div>
@@ -249,7 +263,7 @@ ${targets
 }
 
 function tplNightTransition() {
-  const voyanteNext = canActTonight("voyante");
+  const voyanteNext = actingRoleIds("voyante").length > 0;
   return `
     ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>

@@ -173,6 +173,71 @@ h2.stitle {
   text-align: center;
 }
 
+/* Puces de rôles spéciaux (configuration) : compact et extensible à
+   beaucoup de rôles, contrairement aux lignes + stepper des rôles de base. */
+.role-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.role-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: #12153080;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-family: inherit;
+}
+button.role-chip {
+  cursor: pointer;
+}
+button.role-chip:active {
+  transform: scale(0.96);
+}
+.role-chip .chip-glyph {
+  font-size: 15px;
+}
+.role-chip.active {
+  color: var(--text-light);
+  border-color: transparent;
+  padding: 6px 10px;
+}
+.role-chip.active.voyante {
+  background: rgba(155, 89, 220, 0.25);
+}
+.role-chip.active.chasseur {
+  background: rgba(220, 149, 89, 0.25);
+}
+.role-chip .chip-step {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.role-chip .chip-step:active {
+  transform: scale(0.9);
+}
+.role-chip .chip-count {
+  font-family: "Cinzel", serif;
+  font-size: 14px;
+  min-width: 14px;
+  text-align: center;
+}
+
 .btn {
   display: block;
   width: 100%;
