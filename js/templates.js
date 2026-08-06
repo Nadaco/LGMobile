@@ -324,10 +324,10 @@ function tplNightVoyanteSleep() {
 function tplNightReveal() {
   const victim = state.players.find((p) => p.id === state.lastVictimId);
   const info = ROLE_INFO[victim.role];
-  const extraVictims = state.extraNightVictims
-    .map((id) => state.players.find((p) => p.id === id))
-    .filter(Boolean);
-  const gameEnds = checkWinner(state.players) !== null;
+  // Si la victime est le Chasseur, sa riposte peut encore changer l'issue :
+  // ne pas annoncer "Voir le résultat" avant qu'elle ait eu lieu.
+  const gameEnds =
+    victim.role !== "chasseur" && checkWinner(state.players) !== null;
 
   return `
     ${moonSvg("blood")}
@@ -350,26 +350,6 @@ function tplNightReveal() {
 </div>
     </div>
     <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
-
-    ${
-extraVictims.length
-  ? `
-<label class="field-label">Autres victimes de la nuit (tir du Chasseur)</label>
-<div class="roster">
-${extraVictims
-  .map(
-    (p) => `
-  <div class="ritem dead">
-    <span>${escapeHtml(p.name)}</span>
-    <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
-  </div>
-`,
-  )
-  .join("")}
-</div>
-`
-  : ""
-    }
 
     <div style="height:8px"></div>
     <button class="btn btn-primary" id="continue-after-reveal">${gameEnds ? "Voir le résultat" : "Passer au vote"}</button>
@@ -397,6 +377,46 @@ ${targets
   .join("")}
     </div>
     <button class="btn btn-primary" id="confirm-hunter-target" ${state.hunterTargetId === null ? "disabled" : ""}>Confirmer le tir</button>
+  `;
+}
+
+function tplHunterVictimReveal(context) {
+  const victim = state.players.find((p) => p.id === state.lastHunterVictimId);
+  const info = ROLE_INFO[victim.role];
+  const hasNext = state.hunterQueue.length > 0;
+  const gameEnds = !hasNext && checkWinner(state.players) !== null;
+  const continueLabel = hasNext
+    ? "Le Chasseur suivant riposte"
+    : gameEnds
+      ? "Voir le résultat"
+      : context === "night"
+        ? "Passer au vote"
+        : "Nuit suivante";
+
+  return `
+    ${moonSvg(context === "night" ? "blood" : "gold")}
+    <div class="center-icon">🏹</div>
+    <h2 class="stitle">La riposte du Chasseur</h2>
+    <div class="subtitle">En mourant, le Chasseur a abattu <strong>${escapeHtml(victim.name)}</strong>.</div>
+
+    <div class="card-zone">
+<div class="card-flip ${state.showHunterVictimCard ? "flipped" : ""}">
+  <div class="card-inner">
+    <div class="card-face card-front">
+      <div class="glyph">🌒</div>
+      <div class="hint">Carte de ${escapeHtml(victim.name)}</div>
+    </div>
+    <div class="card-face card-back role-${info.cls}">
+      <div class="glyph">${info.glyph}</div>
+      <div class="rolename">${info.label}</div>
+    </div>
+  </div>
+</div>
+    </div>
+    <button class="btn btn-ghost" id="toggle-hunter-victim-card">${state.showHunterVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
+
+    <div style="height:8px"></div>
+    <button class="btn btn-primary" id="continue-after-hunter-reveal">${continueLabel}</button>
   `;
 }
 
@@ -434,10 +454,11 @@ function tplDayReveal() {
     ? state.players.find((p) => p.id === state.lastDayVictimId)
     : null;
   const info = hasVictim ? ROLE_INFO[victim.role] : null;
-  const extraVictims = state.extraDayVictims
-    .map((id) => state.players.find((p) => p.id === id))
-    .filter(Boolean);
-  const gameEnds = checkWinner(state.players) !== null;
+  // Si la victime est le Chasseur, sa riposte peut encore changer l'issue :
+  // ne pas annoncer "Voir le résultat" avant qu'elle ait eu lieu.
+  const gameEnds =
+    (!hasVictim || victim.role !== "chasseur") &&
+    checkWinner(state.players) !== null;
 
   return `
     ${moonSvg("gold")}
@@ -469,26 +490,6 @@ hasVictim
 </div>
 <button class="btn btn-ghost" id="toggle-day-victim-card">${state.showDayVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
     `
-  : ""
-    }
-
-    ${
-extraVictims.length
-  ? `
-<label class="field-label">Autres victimes du jour (tir du Chasseur)</label>
-<div class="roster">
-${extraVictims
-  .map(
-    (p) => `
-  <div class="ritem dead">
-    <span>${escapeHtml(p.name)}</span>
-    <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
-  </div>
-`,
-  )
-  .join("")}
-</div>
-`
   : ""
     }
 

@@ -42,11 +42,17 @@ function render() {
     case "night_hunter":
       html = tplHunterShot("night");
       break;
+    case "night_hunter_reveal":
+      html = tplHunterVictimReveal("night");
+      break;
     case "night_reveal":
       html = tplNightReveal();
       break;
     case "day_hunter":
       html = tplHunterShot("day");
+      break;
+    case "day_hunter_reveal":
+      html = tplHunterVictimReveal("day");
       break;
     case "day_vote":
       html = tplDayVote();
@@ -68,9 +74,47 @@ function render() {
   wire();
 }
 
-// Résout le tir de riposte du Chasseur en tête de hunterQueue, puis
-// enchaîne sur le Chasseur suivant si son tir en abat un autre, ou
-// continue vers l'écran de révélation (nuit ou jour).
+// Calcule (sans l'appliquer) la transition à effectuer une fois toutes
+// les morts de la manche résolues : victoire, ou passage au vote (nuit)
+// / à la nuit suivante (jour). Renvoyé sous forme de partiel pour pouvoir
+// être fusionné dans un unique set() par l'appelant.
+function finishRoundPartial(context, players) {
+  const winner = checkWinner(players);
+  if (winner) {
+    recordGameResult(players, winner, state.round);
+    return { players, phase: "gameover", winner };
+  }
+  if (context === "night") {
+    return { players, phase: "day_vote", dayTargetId: undefined };
+  }
+  return {
+    players,
+    phase: "night_sleep",
+    round: state.round + 1,
+    targetId: null,
+  };
+}
+
+// Une fois la mort d'un joueur annoncée (night_reveal / day_reveal), s'il
+// s'agit du Chasseur, il rétorque aussitôt ; sinon la manche se termine.
+function seedHunterOrFinish(victim, context, players) {
+  if (victim && victim.role === "chasseur") {
+    set({
+      players,
+      hunterQueue: [victim.id],
+      hunterContext: context,
+      hunterTargetId: null,
+      phase: context === "night" ? "night_hunter" : "day_hunter",
+    });
+  } else {
+    set(finishRoundPartial(context, players));
+  }
+}
+
+// Résout le tir de riposte du Chasseur en tête de hunterQueue et bascule
+// vers l'écran qui annonce le rôle de la victime abattue. La chaîne
+// (Chasseur qui abat un autre Chasseur) ou la suite de la manche sont
+// décidées depuis cet écran de révélation, pas ici.
 function resolveHunterShot(context) {
   const targetId = state.hunterTargetId;
   const players = state.players.map((p) =>
@@ -82,31 +126,14 @@ function resolveHunterShot(context) {
     shotPlayer.role === "chasseur"
       ? [...restQueue, shotPlayer.id]
       : restQueue;
-  const extraKey =
-    context === "night" ? "extraNightVictims" : "extraDayVictims";
-  // Une seule mise à jour : hunterQueue et phase doivent changer ensemble,
-  // sinon un rendu intermédiaire (queue déjà vide, phase encore "*_hunter")
-  // fait planter tplHunterShot() qui attend un chasseur en tête de file.
   set({
     players,
     hunterQueue: newQueue,
-    [extraKey]: [...state[extraKey], targetId],
     hunterTargetId: null,
-    ...nextHunterPhase(newQueue, context),
+    lastHunterVictimId: targetId,
+    showHunterVictimCard: false,
+    phase: context === "night" ? "night_hunter_reveal" : "day_hunter_reveal",
   });
-}
-
-function nextHunterPhase(queue, context) {
-  if (queue.length > 0) {
-    return { phase: context === "night" ? "night_hunter" : "day_hunter" };
-  }
-  return context === "night"
-    ? { phase: "night_reveal", showVictimCard: false }
-    : { phase: "day_reveal", showDayVictimCard: false };
-}
-
-function advanceHunterOrReveal(context) {
-  set(nextHunterPhase(state.hunterQueue, context));
 }
 
 function wire() {
@@ -270,13 +297,9 @@ function wire() {
       const players = state.players.map((p) =>
         p.id === state.targetId ? { ...p, alive: false } : p,
       );
-      const victim = players.find((p) => p.id === state.targetId);
       set({
         players,
         lastVictimId: state.targetId,
-        extraNightVictims: [],
-        hunterQueue: victim.role === "chasseur" ? [victim.id] : [],
-        hunterContext: "night",
         phase: "night_transition",
       });
     };
@@ -292,7 +315,7 @@ function wire() {
           voyanteRevealed: false,
         });
       } else {
-        advanceHunterOrReveal("night");
+        set({ phase: "night_reveal", showVictimCard: false });
       }
     };
 
@@ -312,7 +335,9 @@ function wire() {
 
   // night voyante sleep
   const wakeVillage = app.querySelector("#wake-village");
-  if (wakeVillage) wakeVillage.onclick = () => advanceHunterOrReveal("night");
+  if (wakeVillage)
+    wakeVillage.onclick = () =>
+      set({ phase: "night_reveal", showVictimCard: false });
 
   // hunter (chasseur) shot — nuit ou jour, déclenché quand un Chasseur meurt
   app.querySelectorAll("[data-hunter-target]").forEach((el) => {
@@ -323,6 +348,33 @@ function wire() {
   if (confirmHunterTarget)
     confirmHunterTarget.onclick = () => resolveHunterShot(state.hunterContext);
 
+  // hunter victim reveal — annonce le rôle de la personne abattue, puis
+  // enchaîne sur le Chasseur suivant (chaîne) ou termine la manche.
+  const toggleHunterVictimCard = app.querySelector(
+    "#toggle-hunter-victim-card",
+  );
+  if (toggleHunterVictimCard)
+    toggleHunterVictimCard.onclick = () =>
+      set({ showHunterVictimCard: !state.showHunterVictimCard });
+  const continueAfterHunterReveal = app.querySelector(
+    "#continue-after-hunter-reveal",
+  );
+  if (continueAfterHunterReveal)
+    continueAfterHunterReveal.onclick = () => {
+      const players = state.players.map((p) =>
+        p.id === state.lastHunterVictimId ? { ...p, roleRevealed: true } : p,
+      );
+      if (state.hunterQueue.length > 0) {
+        set({
+          players,
+          phase:
+            state.hunterContext === "night" ? "night_hunter" : "day_hunter",
+        });
+      } else {
+        set(finishRoundPartial(state.hunterContext, players));
+      }
+    };
+
   // night reveal
   const toggleCard = app.querySelector("#toggle-victim-card");
   if (toggleCard)
@@ -331,17 +383,11 @@ function wire() {
   const continueBtn = app.querySelector("#continue-after-reveal");
   if (continueBtn)
     continueBtn.onclick = () => {
-      const deadIds = [state.lastVictimId, ...state.extraNightVictims];
       const players = state.players.map((p) =>
-        deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
+        p.id === state.lastVictimId ? { ...p, roleRevealed: true } : p,
       );
-      const winner = checkWinner(players);
-      if (winner) {
-        recordGameResult(players, winner, state.round);
-        set({ players, phase: "gameover", winner });
-      } else {
-        set({ players, phase: "day_vote", dayTargetId: undefined });
-      }
+      const victim = players.find((p) => p.id === state.lastVictimId);
+      seedHunterOrFinish(victim, "night", players);
     };
 
   // day vote
@@ -358,25 +404,17 @@ function wire() {
         set({
           lastDayVictimId: null,
           showDayVictimCard: false,
-          extraDayVictims: [],
-          hunterQueue: [],
-          hunterContext: "day",
           phase: "day_reveal",
         });
       } else {
         const players = state.players.map((p) =>
           p.id === state.dayTargetId ? { ...p, alive: false } : p,
         );
-        const victim = players.find((p) => p.id === state.dayTargetId);
-        const hunterQueue = victim.role === "chasseur" ? [victim.id] : [];
         set({
           players,
           lastDayVictimId: state.dayTargetId,
           showDayVictimCard: false,
-          extraDayVictims: [],
-          hunterQueue,
-          hunterContext: "day",
-          phase: hunterQueue.length > 0 ? "day_hunter" : "day_reveal",
+          phase: "day_reveal",
         });
       }
     };
@@ -389,27 +427,15 @@ function wire() {
   const continueAfterDay = app.querySelector("#continue-after-day");
   if (continueAfterDay)
     continueAfterDay.onclick = () => {
-      const deadIds =
-        state.lastDayVictimId !== null
-          ? [state.lastDayVictimId, ...state.extraDayVictims]
-          : [];
-      const players = deadIds.length
-        ? state.players.map((p) =>
-            deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
-          )
-        : state.players;
-      const winner = checkWinner(players);
-      if (winner) {
-        recordGameResult(players, winner, state.round);
-        set({ players, phase: "gameover", winner });
-      } else {
-        set({
-          players,
-          phase: "night_sleep",
-          round: state.round + 1,
-          targetId: null,
-        });
+      if (state.lastDayVictimId === null) {
+        set(finishRoundPartial("day", state.players));
+        return;
       }
+      const players = state.players.map((p) =>
+        p.id === state.lastDayVictimId ? { ...p, roleRevealed: true } : p,
+      );
+      const victim = players.find((p) => p.id === state.lastDayVictimId);
+      seedHunterOrFinish(victim, "day", players);
     };
 
   // gameover

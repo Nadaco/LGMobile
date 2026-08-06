@@ -36,8 +36,8 @@ let state = {
   hunterQueue: [], // ids de Chasseurs morts qui doivent encore riposter
   hunterTargetId: null,
   hunterContext: null, // "night" | "day" — où renvoyer une fois la riposte résolue
-  extraNightVictims: [], // ids abattus par un Chasseur cette nuit
-  extraDayVictims: [], // ids abattus par un Chasseur ce jour
+  lastHunterVictimId: null,
+  showHunterVictimCard: false,
   showAllCards: false,
   winner: null,
 };
@@ -234,8 +234,8 @@ function resetGame() {
     hunterQueue: [],
     hunterTargetId: null,
     hunterContext: null,
-    extraNightVictims: [],
-    extraDayVictims: [],
+    lastHunterVictimId: null,
+    showHunterVictimCard: false,
     showAllCards: false,
     winner: null,
   };
