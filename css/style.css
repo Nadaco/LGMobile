@@ -213,6 +213,12 @@ button.role-chip:active {
 .role-chip.active.chasseur {
   background: rgba(220, 149, 89, 0.25);
 }
+.role-chip.active.fille {
+  background: rgba(224, 92, 150, 0.25);
+}
+.role-chip.active.cupidon {
+  background: rgba(214, 51, 108, 0.3);
+}
 .role-chip .chip-step {
   width: 22px;
   height: 22px;
@@ -348,6 +354,12 @@ button.role-chip:active {
 }
 .card-back.role-chasseur {
   background: linear-gradient(160deg, #5c3d1a, #301f0f);
+}
+.card-back.role-fille {
+  background: linear-gradient(160deg, #5c1a3d, #300f22);
+}
+.card-back.role-cupidon {
+  background: linear-gradient(160deg, #6c1030, #2f0714);
 }
 .card-back .glyph {
   font-size: 52px;
@@ -500,6 +512,14 @@ label.field-label {
 .rolebadge.chasseur {
   background: rgba(220, 149, 89, 0.25);
   color: #f5b96a;
+}
+.rolebadge.fille {
+  background: rgba(224, 92, 150, 0.25);
+  color: #f5a0c0;
+}
+.rolebadge.cupidon {
+  background: rgba(214, 51, 108, 0.3);
+  color: #ff8fb5;
 }
 
 /* Aide-mémoire des rôles (écran "Voir tous les rôles") */

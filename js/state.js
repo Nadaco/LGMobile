@@ -20,6 +20,8 @@ let state = {
   numWolves: 1,
   numVoyantes: 0,
   numChasseurs: 0,
+  numFilles: 0,
+  numCupidons: 0,
   deck: [],
   players: [], // {id, name, role, alive}
   distributeIndex: 0,
@@ -28,6 +30,9 @@ let state = {
   targetId: null,
   lastVictimId: null,
   showVictimCard: false,
+  lovers: [], // ids des deux amoureux désignés par Cupidon la nuit 1
+  loverSelection: [], // sélection en cours pendant le tour de Cupidon
+  lastLoverVictimId: null, // amoureux mort de chagrin lors de la dernière mort résolue
   voyanteQueue: [], // ids des voyantes qui n'ont pas encore regardé une carte cette nuit
   voyanteTargetId: null,
   voyanteRevealed: false,
@@ -110,6 +115,9 @@ function recordGameResult(players, winner, round) {
     date: new Date().toISOString(),
     round,
     winner,
+    lovers: state.lovers
+      .map((id) => players.find((p) => p.id === id)?.name)
+      .filter(Boolean),
     players: players.map((p) => ({ name: p.name, role: p.role })),
   });
   saveJSON(STORAGE_KEYS.history, history.slice(0, 200));
@@ -117,24 +125,31 @@ function recordGameResult(players, winner, round) {
 
 function computePlayerStats() {
   const history = getHistory();
-  const stats = {}; // name -> {games, winsVillage, winsLoup}
+  const stats = {}; // name -> {games, winsVillage, winsLoup, winsAmoureux}
   history.forEach((g) => {
     g.players.forEach((p) => {
       if (!stats[p.name])
-        stats[p.name] = { games: 0, winsVillage: 0, winsLoup: 0 };
+        stats[p.name] = {
+          games: 0,
+          winsVillage: 0,
+          winsLoup: 0,
+          winsAmoureux: 0,
+        };
       stats[p.name].games++;
       const team = ROLE_INFO[p.role].team;
       if (g.winner === "villageois" && team === "village")
         stats[p.name].winsVillage++;
       if (g.winner === "loups-garous" && team === "loups")
         stats[p.name].winsLoup++;
+      if (g.winner === "amoureux" && g.lovers && g.lovers.includes(p.name))
+        stats[p.name].winsAmoureux++;
     });
   });
   return Object.entries(stats)
     .map(([name, s]) => ({
       name,
       ...s,
-      wins: s.winsVillage + s.winsLoup,
+      wins: s.winsVillage + s.winsLoup + s.winsAmoureux,
     }))
     .sort((a, b) => b.games - a.games || b.wins - a.wins);
 }
@@ -156,14 +171,20 @@ function shuffle(arr) {
 // (le nombre de villageois est la variable réglée directement en configuration).
 function totalPlayers() {
   return (
-    state.numVillageois + state.numWolves + state.numVoyantes + state.numChasseurs
+    state.numVillageois +
+    state.numWolves +
+    state.numVoyantes +
+    state.numChasseurs +
+    state.numFilles +
+    state.numCupidons
   );
 }
 
-// Ajuste numVillageois/numWolves/numVoyantes/numChasseurs pour rester
-// cohérents entre eux : entre 3 et 20 joueurs au total, et les loups ne
-// doivent jamais être aussi ou plus nombreux que le reste du village.
-// Les villageois absorbent les ajustements (comme le faisait numPlayers).
+// Ajuste numVillageois/numWolves/numVoyantes/numChasseurs/numFilles/
+// numCupidons pour rester cohérents entre eux : entre 3 et 20 joueurs au
+// total, et les loups ne doivent jamais être aussi ou plus nombreux que
+// le reste du village. Les villageois absorbent les ajustements (comme
+// le faisait numPlayers), les autres rôles spéciaux en dernier recours.
 function normalizeSetup(next) {
   let numVillageois = Math.max(
     0,
@@ -172,8 +193,11 @@ function normalizeSetup(next) {
   let numWolves = Math.max(1, next.numWolves ?? state.numWolves);
   let numVoyantes = Math.max(0, next.numVoyantes ?? state.numVoyantes);
   let numChasseurs = Math.max(0, next.numChasseurs ?? state.numChasseurs);
+  let numFilles = Math.max(0, next.numFilles ?? state.numFilles);
+  let numCupidons = Math.max(0, next.numCupidons ?? state.numCupidons);
 
-  const villageTeam = () => numVillageois + numVoyantes + numChasseurs;
+  const villageTeam = () =>
+    numVillageois + numVoyantes + numChasseurs + numFilles + numCupidons;
 
   let total = villageTeam() + numWolves;
   if (total > 20) numVillageois = Math.max(0, numVillageois - (total - 20));
@@ -185,6 +209,12 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total > 20) {
     let overflow = total - 20;
+    const cutCupidons = Math.min(numCupidons, overflow);
+    numCupidons -= cutCupidons;
+    overflow -= cutCupidons;
+    const cutFilles = Math.min(numFilles, overflow);
+    numFilles -= cutFilles;
+    overflow -= cutFilles;
     const cutChasseurs = Math.min(numChasseurs, overflow);
     numChasseurs -= cutChasseurs;
     overflow -= cutChasseurs;
@@ -197,10 +227,34 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total < 3) numVillageois += 3 - total;
 
-  return { numVillageois, numWolves, numVoyantes, numChasseurs };
+  return {
+    numVillageois,
+    numWolves,
+    numVoyantes,
+    numChasseurs,
+    numFilles,
+    numCupidons,
+  };
 }
 
 function checkWinner(players) {
+  // Si les deux amoureux désignés par Cupidon sont de camps opposés et
+  // sont les deux seuls survivants, ils gagnent ensemble avant tout autre
+  // calcul de camp.
+  if (state.lovers.length === 2) {
+    const alive = players.filter((p) => p.alive);
+    const [a, b] = state.lovers.map((id) => players.find((p) => p.id === id));
+    if (
+      alive.length === 2 &&
+      a &&
+      b &&
+      a.alive &&
+      b.alive &&
+      ROLE_INFO[a.role].team !== ROLE_INFO[b.role].team
+    ) {
+      return "amoureux";
+    }
+  }
   const aliveWolves = players.filter(
     (p) => p.alive && ROLE_INFO[p.role].team === "loups",
   ).length;
@@ -210,6 +264,31 @@ function checkWinner(players) {
   if (aliveWolves === 0) return "villageois";
   if (aliveWolves >= aliveVillage) return "loups-garous";
   return null;
+}
+
+// Si l'un des deux amoureux désignés par Cupidon vient de mourir alors
+// que l'autre est toujours vivant, ce dernier meurt aussitôt de chagrin.
+// Renvoie { players, extraDeathId } — extraDeathId est l'id de l'amoureux
+// mort de chagrin, ou null si aucune cascade ne s'est produite.
+function applyLoverCascade(players) {
+  if (state.lovers.length !== 2) return { players, extraDeathId: null };
+  const [aId, bId] = state.lovers;
+  const a = players.find((p) => p.id === aId);
+  const b = players.find((p) => p.id === bId);
+  if (!a || !b) return { players, extraDeathId: null };
+  if (!a.alive && b.alive) {
+    return {
+      players: players.map((p) => (p.id === bId ? { ...p, alive: false } : p)),
+      extraDeathId: bId,
+    };
+  }
+  if (!b.alive && a.alive) {
+    return {
+      players: players.map((p) => (p.id === aId ? { ...p, alive: false } : p)),
+      extraDeathId: aId,
+    };
+  }
+  return { players, extraDeathId: null };
 }
 
 // Ids des joueurs d'un rôle qui peuvent encore agir cette nuit : vivants,
@@ -233,6 +312,8 @@ function resetGame() {
     numWolves: 1,
     numVoyantes: 0,
     numChasseurs: 0,
+    numFilles: 0,
+    numCupidons: 0,
     deck: [],
     players: [],
     distributeIndex: 0,
@@ -241,6 +322,9 @@ function resetGame() {
     targetId: null,
     lastVictimId: null,
     showVictimCard: false,
+    lovers: [],
+    loverSelection: [],
+    lastLoverVictimId: null,
     voyanteQueue: [],
     voyanteTargetId: null,
     voyanteRevealed: false,
