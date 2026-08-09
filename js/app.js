@@ -21,6 +21,9 @@ function render() {
     case "stats":
       html = tplStats();
       break;
+    case "rules":
+      html = tplRules();
+      break;
     case "distribute":
       html = tplDistribute();
       break;
@@ -187,6 +190,10 @@ function wire() {
   if (viewStats) viewStats.onclick = () => set({ phase: "stats" });
   const backToSetup = app.querySelector("#back-to-setup");
   if (backToSetup) backToSetup.onclick = () => set({ phase: "setup" });
+  const viewRules = app.querySelector("#view-rules");
+  if (viewRules) viewRules.onclick = () => set({ phase: "rules" });
+  const backFromRules = app.querySelector("#back-from-rules");
+  if (backFromRules) backFromRules.onclick = () => set({ phase: "setup" });
   const clearHistoryBtn = app.querySelector("#clear-history");
   if (clearHistoryBtn)
     clearHistoryBtn.onclick = () => {
