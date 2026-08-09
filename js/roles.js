@@ -50,4 +50,12 @@ const ROLE_INFO = {
     description:
       "Pendant que les loups-garous choisissent leur victime, elle peut risquer un œil pour tenter de les identifier. Si elle se fait repérer, les loups pourront la choisir comme cible lors de leur vote.",
   },
+  cupidon: {
+    label: "Cupidon",
+    glyph: "💘",
+    cls: "cupidon",
+    team: "village",
+    description:
+      "La première nuit uniquement, désigne deux joueurs (lui y compris s'il le souhaite) qui tombent amoureux l'un de l'autre. Si l'un des deux meurt, l'autre meurt aussitôt de chagrin. S'ils sont de camps opposés et sont les deux derniers survivants, les amoureux gagnent ensemble.",
+  },
 };

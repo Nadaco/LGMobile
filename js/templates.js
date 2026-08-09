@@ -43,6 +43,7 @@ const SPECIAL_ROLES = [
   { key: "voyante", count: () => state.numVoyantes },
   { key: "chasseur", count: () => state.numChasseurs },
   { key: "petite-fille", count: () => state.numFilles },
+  { key: "cupidon", count: () => state.numCupidons },
 ];
 
 function tplSetup() {
@@ -179,10 +180,22 @@ ${history
       day: "2-digit",
       month: "2-digit",
     });
+    const badgeCls =
+      g.winner === "loups-garous"
+        ? "loup"
+        : g.winner === "amoureux"
+          ? "cupidon"
+          : "villageois";
+    const badgeLabel =
+      g.winner === "loups-garous"
+        ? "Loups"
+        : g.winner === "amoureux"
+          ? "Amoureux"
+          : "Village";
     return `
   <div class="ritem">
     <span>${dateStr} · ${g.players.length} joueurs · ${g.round} nuit${g.round > 1 ? "s" : ""}</span>
-    <span class="rolebadge ${g.winner === "loups-garous" ? "loup" : "villageois"}">${g.winner === "loups-garous" ? "Loups" : "Village"}</span>
+    <span class="rolebadge ${badgeCls}">${badgeLabel}</span>
   </div>
 `;
   })
@@ -257,13 +270,41 @@ ${getRecentNames()
 }
 
 function tplNightSleep() {
+  const cupidonFirst =
+    state.round === 1 &&
+    state.lovers.length === 0 &&
+    state.players.some((p) => p.role === "cupidon");
   return `
     ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>
     <div class="center-icon">🌙</div>
     <h2 class="stitle">Le village s'endort...</h2>
     <div class="subtitle">Tout le monde ferme les yeux. Le maître du jeu garde le téléphone.</div>
-    <button class="btn btn-primary" id="wake-wolves">Les loups-garous se réveillent</button>
+    <button class="btn btn-primary" id="wake-wolves">${cupidonFirst ? "Cupidon se réveille" : "Les loups-garous se réveillent"}</button>
+  `;
+}
+
+function tplCupidon() {
+  const targets = state.players.filter((p) => p.alive);
+  return `
+    ${moonSvg("night")}
+    <div class="eyebrow">Nuit ${state.round}</div>
+    <div class="center-icon">💘</div>
+    <h2 class="stitle">Cupidon se réveille</h2>
+    <div class="subtitle">Il désigne en silence deux joueurs qui tombent amoureux l'un de l'autre (lui y compris, s'il le souhaite). Le maître du jeu sélectionne les deux ci-dessous.</div>
+    <div class="plist">
+${targets
+  .map(
+    (p) => `
+  <div class="pitem ${state.loverSelection.includes(p.id) ? "selected" : ""}" data-lover-select="${p.id}">
+    <div class="dot"></div>
+    <div class="name">${escapeHtml(p.name)}</div>
+  </div>
+`,
+  )
+  .join("")}
+    </div>
+    <button class="btn btn-primary" id="confirm-lovers" ${state.loverSelection.length === 2 ? "" : "disabled"}>Former le couple</button>
   `;
 }
 
@@ -366,13 +407,37 @@ function tplNightVoyanteSleep() {
   `;
 }
 
+// Amoureux mort de chagrin suite à la dernière mort résolue (loups, vote,
+// ou tir du Chasseur) : annoncé sur le même écran, sans mise en scène
+// dédiée puisque, contrairement au Chasseur, il n'y a aucun choix à faire.
+function tplLoverCascade() {
+  if (!state.lastLoverVictimId) return "";
+  const lover = state.players.find((p) => p.id === state.lastLoverVictimId);
+  const info = ROLE_INFO[lover.role];
+  return `
+<label class="field-label">Mort·e de chagrin</label>
+<div class="roster">
+  <div class="ritem dead">
+    <span>💘 ${escapeHtml(lover.name)}</span>
+    <span class="rolebadge ${info.cls}">${info.label}</span>
+  </div>
+</div>
+`;
+}
+
 function tplNightReveal() {
   const victim = state.players.find((p) => p.id === state.lastVictimId);
   const info = ROLE_INFO[victim.role];
-  // Si la victime est le Chasseur, sa riposte peut encore changer l'issue :
-  // ne pas annoncer "Voir le résultat" avant qu'elle ait eu lieu.
+  const cascadeVictim = state.lastLoverVictimId
+    ? state.players.find((p) => p.id === state.lastLoverVictimId)
+    : null;
+  // Si la victime (ou l'amoureux mort de chagrin) est le Chasseur, sa
+  // riposte peut encore changer l'issue : ne pas annoncer "Voir le
+  // résultat" avant qu'elle ait eu lieu.
   const gameEnds =
-    victim.role !== "chasseur" && checkWinner(state.players) !== null;
+    victim.role !== "chasseur" &&
+    (!cascadeVictim || cascadeVictim.role !== "chasseur") &&
+    checkWinner(state.players) !== null;
 
   return `
     ${moonSvg("blood")}
@@ -395,6 +460,8 @@ function tplNightReveal() {
 </div>
     </div>
     <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
+
+    ${tplLoverCascade()}
 
     <div style="height:8px"></div>
     <button class="btn btn-primary" id="continue-after-reveal">${gameEnds ? "Voir le résultat" : "Passer au vote"}</button>
@@ -460,6 +527,8 @@ function tplHunterVictimReveal(context) {
     </div>
     <button class="btn btn-ghost" id="toggle-hunter-victim-card">${state.showHunterVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
 
+    ${tplLoverCascade()}
+
     <div style="height:8px"></div>
     <button class="btn btn-primary" id="continue-after-hunter-reveal">${continueLabel}</button>
   `;
@@ -499,10 +568,15 @@ function tplDayReveal() {
     ? state.players.find((p) => p.id === state.lastDayVictimId)
     : null;
   const info = hasVictim ? ROLE_INFO[victim.role] : null;
-  // Si la victime est le Chasseur, sa riposte peut encore changer l'issue :
-  // ne pas annoncer "Voir le résultat" avant qu'elle ait eu lieu.
+  const cascadeVictim = state.lastLoverVictimId
+    ? state.players.find((p) => p.id === state.lastLoverVictimId)
+    : null;
+  // Si la victime (ou l'amoureux mort de chagrin) est le Chasseur, sa
+  // riposte peut encore changer l'issue : ne pas annoncer "Voir le
+  // résultat" avant qu'elle ait eu lieu.
   const gameEnds =
     (!hasVictim || victim.role !== "chasseur") &&
+    (!cascadeVictim || cascadeVictim.role !== "chasseur") &&
     checkWinner(state.players) !== null;
 
   return `
@@ -538,6 +612,8 @@ hasVictim
   : ""
     }
 
+    ${tplLoverCascade()}
+
     <label class="field-label">Survivants</label>
     <div class="roster">
 ${state.players
@@ -558,10 +634,17 @@ ${state.players
 
 function tplGameOver() {
   const wolvesWon = state.winner === "loups-garous";
+  const loversWon = state.winner === "amoureux";
+  const icon = loversWon ? "💘" : wolvesWon ? "🐺" : "🌞";
+  const title = loversWon
+    ? "Les amoureux ont gagné"
+    : wolvesWon
+      ? "Les loups-garous ont gagné"
+      : "Les villageois ont gagné";
   return `
     ${moonSvg(wolvesWon ? "blood" : "gold")}
-    <div class="center-icon">${wolvesWon ? "🐺" : "🌞"}</div>
-    <div class="winner-banner">${wolvesWon ? "Les loups-garous ont gagné" : "Les villageois ont gagné"}</div>
+    <div class="center-icon">${icon}</div>
+    <div class="winner-banner">${title}</div>
     <div class="subtitle">Partie terminée après ${state.round} nuit${state.round > 1 ? "s" : ""}.</div>
 
     <label class="field-label">Tous les rôles</label>

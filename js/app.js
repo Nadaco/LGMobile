@@ -30,6 +30,9 @@ function render() {
     case "night_sleep":
       html = tplNightSleep();
       break;
+    case "night_cupidon":
+      html = tplCupidon();
+      break;
     case "night_wolves":
       html = tplNightWolves();
       break;
@@ -98,13 +101,17 @@ function finishRoundPartial(context, players) {
   };
 }
 
-// Une fois la mort d'un joueur annoncée (night_reveal / day_reveal), s'il
-// s'agit du Chasseur, il rétorque aussitôt ; sinon la manche se termine.
-function seedHunterOrFinish(victim, context, players) {
-  if (victim && victim.role === "chasseur") {
+// Une fois la mort (ou les morts, si l'amoureux d'une victime meurt de
+// chagrin) annoncée(s), chaque Chasseur parmi elles rétorque aussitôt ;
+// sinon la manche se termine.
+function seedHunterOrFinish(victims, context, players) {
+  const hunterIds = victims
+    .filter((v) => v && v.role === "chasseur")
+    .map((v) => v.id);
+  if (hunterIds.length > 0) {
     set({
       players,
-      hunterQueue: [victim.id],
+      hunterQueue: hunterIds,
       hunterContext: context,
       hunterTargetId: null,
       phase: context === "night" ? "night_hunter" : "day_hunter",
@@ -116,24 +123,30 @@ function seedHunterOrFinish(victim, context, players) {
 
 // Résout le tir de riposte du Chasseur en tête de hunterQueue et bascule
 // vers l'écran qui annonce le rôle de la victime abattue. La chaîne
-// (Chasseur qui abat un autre Chasseur) ou la suite de la manche sont
-// décidées depuis cet écran de révélation, pas ici.
+// (Chasseur qui abat un autre Chasseur, y compris via la cascade des
+// amoureux) ou la suite de la manche sont décidées depuis cet écran de
+// révélation, pas ici.
 function resolveHunterShot(context) {
   const targetId = state.hunterTargetId;
-  const players = state.players.map((p) =>
+  let players = state.players.map((p) =>
     p.id === targetId ? { ...p, alive: false } : p,
   );
+  const cascade = applyLoverCascade(players);
+  players = cascade.players;
   const shotPlayer = players.find((p) => p.id === targetId);
-  const restQueue = state.hunterQueue.slice(1);
-  const newQueue =
-    shotPlayer.role === "chasseur"
-      ? [...restQueue, shotPlayer.id]
-      : restQueue;
+  const cascadeVictim = cascade.extraDeathId
+    ? players.find((p) => p.id === cascade.extraDeathId)
+    : null;
+  let newQueue = state.hunterQueue.slice(1);
+  if (shotPlayer.role === "chasseur") newQueue = [...newQueue, shotPlayer.id];
+  if (cascadeVictim && cascadeVictim.role === "chasseur")
+    newQueue = [...newQueue, cascadeVictim.id];
   set({
     players,
     hunterQueue: newQueue,
     hunterTargetId: null,
     lastHunterVictimId: targetId,
+    lastLoverVictimId: cascade.extraDeathId,
     showHunterVictimCard: false,
     phase: context === "night" ? "night_hunter_reveal" : "day_hunter_reveal",
   });
@@ -161,13 +174,14 @@ function wire() {
     wPlus.onclick = () => {
       set(normalizeSetup({ numWolves: state.numWolves + 1 }));
     };
-  // Rôles spéciaux : une puce = un rôle, un clic bascule 0/1. Ajouter un
-  // rôle spécial ici + dans SPECIAL_ROLES (js/templates.js) suffit à le
-  // faire apparaître dans la configuration.
+  // Rôles spéciaux : une puce = un rôle, en nombre libre. Ajouter un rôle
+  // spécial ici + dans SPECIAL_ROLES (js/templates.js) suffit à le faire
+  // apparaître dans la configuration.
   const SPECIAL_ROLE_FIELDS = {
     voyante: "numVoyantes",
     chasseur: "numChasseurs",
     "petite-fille": "numFilles",
+    cupidon: "numCupidons",
   };
   app.querySelectorAll("[data-role-add]").forEach((el) => {
     el.onclick = () => {
@@ -215,6 +229,7 @@ function wire() {
         ...Array(state.numVoyantes).fill("voyante"),
         ...Array(state.numChasseurs).fill("chasseur"),
         ...Array(state.numFilles).fill("petite-fille"),
+        ...Array(state.numCupidons).fill("cupidon"),
         ...Array(state.numVillageois).fill("villageois"),
       ]);
       set({
@@ -292,8 +307,39 @@ function wire() {
   // night sleep
   const wakeWolves = app.querySelector("#wake-wolves");
   if (wakeWolves)
-    wakeWolves.onclick = () =>
-      set({ phase: "night_wolves", targetId: null });
+    wakeWolves.onclick = () => {
+      const cupidonFirst =
+        state.round === 1 &&
+        state.lovers.length === 0 &&
+        state.players.some((p) => p.role === "cupidon");
+      set({
+        targetId: null,
+        loverSelection: [],
+        phase: cupidonFirst ? "night_cupidon" : "night_wolves",
+      });
+    };
+
+  // night cupidon (nuit 1 uniquement)
+  app.querySelectorAll("[data-lover-select]").forEach((el) => {
+    el.onclick = () => {
+      const id = Number(el.getAttribute("data-lover-select"));
+      let sel = state.loverSelection;
+      if (sel.includes(id)) {
+        sel = sel.filter((x) => x !== id);
+      } else if (sel.length < 2) {
+        sel = [...sel, id];
+      }
+      set({ loverSelection: sel });
+    };
+  });
+  const confirmLovers = app.querySelector("#confirm-lovers");
+  if (confirmLovers)
+    confirmLovers.onclick = () =>
+      set({
+        lovers: state.loverSelection,
+        loverSelection: [],
+        phase: "night_wolves",
+      });
 
   // night wolves - target selection
   app.querySelectorAll("[data-target]").forEach((el) => {
@@ -303,12 +349,15 @@ function wire() {
   const confirmTarget = app.querySelector("#confirm-target");
   if (confirmTarget)
     confirmTarget.onclick = () => {
-      const players = state.players.map((p) =>
+      let players = state.players.map((p) =>
         p.id === state.targetId ? { ...p, alive: false } : p,
       );
+      const cascade = applyLoverCascade(players);
+      players = cascade.players;
       set({
         players,
         lastVictimId: state.targetId,
+        lastLoverVictimId: cascade.extraDeathId,
         phase: "night_transition",
       });
     };
@@ -384,8 +433,12 @@ function wire() {
   );
   if (continueAfterHunterReveal)
     continueAfterHunterReveal.onclick = () => {
+      const deadIds = [
+        state.lastHunterVictimId,
+        state.lastLoverVictimId,
+      ].filter((id) => id !== null);
       const players = state.players.map((p) =>
-        p.id === state.lastHunterVictimId ? { ...p, roleRevealed: true } : p,
+        deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
       );
       if (state.hunterQueue.length > 0) {
         set({
@@ -406,11 +459,14 @@ function wire() {
   const continueBtn = app.querySelector("#continue-after-reveal");
   if (continueBtn)
     continueBtn.onclick = () => {
-      const players = state.players.map((p) =>
-        p.id === state.lastVictimId ? { ...p, roleRevealed: true } : p,
+      const deadIds = [state.lastVictimId, state.lastLoverVictimId].filter(
+        (id) => id !== null,
       );
-      const victim = players.find((p) => p.id === state.lastVictimId);
-      seedHunterOrFinish(victim, "night", players);
+      const players = state.players.map((p) =>
+        deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
+      );
+      const victims = deadIds.map((id) => players.find((p) => p.id === id));
+      seedHunterOrFinish(victims, "night", players);
     };
 
   // day vote
@@ -426,16 +482,20 @@ function wire() {
       if (state.dayTargetId === "none") {
         set({
           lastDayVictimId: null,
+          lastLoverVictimId: null,
           showDayVictimCard: false,
           phase: "day_reveal",
         });
       } else {
-        const players = state.players.map((p) =>
+        let players = state.players.map((p) =>
           p.id === state.dayTargetId ? { ...p, alive: false } : p,
         );
+        const cascade = applyLoverCascade(players);
+        players = cascade.players;
         set({
           players,
           lastDayVictimId: state.dayTargetId,
+          lastLoverVictimId: cascade.extraDeathId,
           showDayVictimCard: false,
           phase: "day_reveal",
         });
@@ -454,11 +514,15 @@ function wire() {
         set(finishRoundPartial("day", state.players));
         return;
       }
+      const deadIds = [
+        state.lastDayVictimId,
+        state.lastLoverVictimId,
+      ].filter((id) => id !== null);
       const players = state.players.map((p) =>
-        p.id === state.lastDayVictimId ? { ...p, roleRevealed: true } : p,
+        deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
       );
-      const victim = players.find((p) => p.id === state.lastDayVictimId);
-      seedHunterOrFinish(victim, "day", players);
+      const victims = deadIds.map((id) => players.find((p) => p.id === id));
+      seedHunterOrFinish(victims, "day", players);
     };
 
   // gameover
