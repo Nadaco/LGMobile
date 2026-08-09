@@ -653,7 +653,7 @@ ${state.players
   .map(
     (p) => `
   <div class="ritem ${p.alive ? "" : "dead"}">
-    <span>${escapeHtml(p.name)}</span>
+    <span>${state.lovers.includes(p.id) ? "💘 " : ""}${escapeHtml(p.name)}</span>
     <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
   </div>
 `,
@@ -676,7 +676,7 @@ function tplRevealAllOverlay() {
       .map(
         (p) => `
       <div class="ritem ${p.alive ? "" : "dead"}">
-        <span>${escapeHtml(p.name)}</span>
+        <span>${state.lovers.includes(p.id) ? "💘 " : ""}${escapeHtml(p.name)}</span>
         <span class="rolebadge ${ROLE_INFO[p.role].cls}">${ROLE_INFO[p.role].label}</span>
       </div>
     `,
