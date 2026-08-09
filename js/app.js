@@ -167,6 +167,7 @@ function wire() {
   const SPECIAL_ROLE_FIELDS = {
     voyante: "numVoyantes",
     chasseur: "numChasseurs",
+    "petite-fille": "numFilles",
   };
   app.querySelectorAll("[data-role-add]").forEach((el) => {
     el.onclick = () => {
@@ -213,6 +214,7 @@ function wire() {
         ...Array(state.numWolves).fill("loup-garou"),
         ...Array(state.numVoyantes).fill("voyante"),
         ...Array(state.numChasseurs).fill("chasseur"),
+        ...Array(state.numFilles).fill("petite-fille"),
         ...Array(state.numVillageois).fill("villageois"),
       ]);
       set({

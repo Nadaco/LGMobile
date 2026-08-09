@@ -38,12 +38,11 @@ function moonSvg(mode) {
 
 // Rôles optionnels proposés sous forme de puces dans la configuration.
 // Ajouter un rôle spécial ici (+ sa case dans SPECIAL_ROLE_FIELDS côté
-// app.js) suffit pour qu'il apparaisse, sans toucher au reste de l'écran —
-// ça reste la seule liste à tenir à jour tant que la partie n'est pas
-// encore réglable à plus d'un exemplaire par rôle spécial.
+// app.js) suffit pour qu'il apparaisse, sans toucher au reste de l'écran.
 const SPECIAL_ROLES = [
   { key: "voyante", count: () => state.numVoyantes },
   { key: "chasseur", count: () => state.numChasseurs },
+  { key: "petite-fille", count: () => state.numFilles },
 ];
 
 function tplSetup() {

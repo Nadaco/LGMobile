@@ -20,6 +20,7 @@ let state = {
   numWolves: 1,
   numVoyantes: 0,
   numChasseurs: 0,
+  numFilles: 0,
   deck: [],
   players: [], // {id, name, role, alive}
   distributeIndex: 0,
@@ -156,14 +157,19 @@ function shuffle(arr) {
 // (le nombre de villageois est la variable réglée directement en configuration).
 function totalPlayers() {
   return (
-    state.numVillageois + state.numWolves + state.numVoyantes + state.numChasseurs
+    state.numVillageois +
+    state.numWolves +
+    state.numVoyantes +
+    state.numChasseurs +
+    state.numFilles
   );
 }
 
-// Ajuste numVillageois/numWolves/numVoyantes/numChasseurs pour rester
-// cohérents entre eux : entre 3 et 20 joueurs au total, et les loups ne
-// doivent jamais être aussi ou plus nombreux que le reste du village.
-// Les villageois absorbent les ajustements (comme le faisait numPlayers).
+// Ajuste numVillageois/numWolves/numVoyantes/numChasseurs/numFilles pour
+// rester cohérents entre eux : entre 3 et 20 joueurs au total, et les
+// loups ne doivent jamais être aussi ou plus nombreux que le reste du
+// village. Les villageois absorbent les ajustements (comme le faisait
+// numPlayers), les autres rôles spéciaux en dernier recours.
 function normalizeSetup(next) {
   let numVillageois = Math.max(
     0,
@@ -172,8 +178,10 @@ function normalizeSetup(next) {
   let numWolves = Math.max(1, next.numWolves ?? state.numWolves);
   let numVoyantes = Math.max(0, next.numVoyantes ?? state.numVoyantes);
   let numChasseurs = Math.max(0, next.numChasseurs ?? state.numChasseurs);
+  let numFilles = Math.max(0, next.numFilles ?? state.numFilles);
 
-  const villageTeam = () => numVillageois + numVoyantes + numChasseurs;
+  const villageTeam = () =>
+    numVillageois + numVoyantes + numChasseurs + numFilles;
 
   let total = villageTeam() + numWolves;
   if (total > 20) numVillageois = Math.max(0, numVillageois - (total - 20));
@@ -185,6 +193,9 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total > 20) {
     let overflow = total - 20;
+    const cutFilles = Math.min(numFilles, overflow);
+    numFilles -= cutFilles;
+    overflow -= cutFilles;
     const cutChasseurs = Math.min(numChasseurs, overflow);
     numChasseurs -= cutChasseurs;
     overflow -= cutChasseurs;
@@ -197,7 +208,7 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total < 3) numVillageois += 3 - total;
 
-  return { numVillageois, numWolves, numVoyantes, numChasseurs };
+  return { numVillageois, numWolves, numVoyantes, numChasseurs, numFilles };
 }
 
 function checkWinner(players) {
@@ -233,6 +244,7 @@ function resetGame() {
     numWolves: 1,
     numVoyantes: 0,
     numChasseurs: 0,
+    numFilles: 0,
     deck: [],
     players: [],
     distributeIndex: 0,

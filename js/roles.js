@@ -42,4 +42,12 @@ const ROLE_INFO = {
     description:
       "Quand il meurt, de nuit ou après un vote, abat aussitôt un autre joueur de son choix avant que la partie ne continue.",
   },
+  "petite-fille": {
+    label: "Petite Fille",
+    glyph: "👧",
+    cls: "fille",
+    team: "village",
+    description:
+      "Pendant que les loups-garous choisissent leur victime, elle peut risquer un œil pour tenter de les identifier. Si elle se fait repérer, les loups pourront la choisir comme cible lors de leur vote.",
+  },
 };
