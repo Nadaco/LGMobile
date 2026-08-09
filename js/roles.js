@@ -1,16 +1,45 @@
 /**
  * roles.js — Définition des rôles du jeu.
  *
- * Pour ajouter un rôle plus tard (Chasseur, Cupidon...) :
+ * Pour ajouter un rôle plus tard (Cupidon, Sorcière...) :
  *  1. Ajoutez une entrée ici avec sa clé, son libellé, son émoji (glyph),
  *     une classe CSS (cls) pour sa couleur de badge/carte (à définir dans
- *     css/style.css, ex: .rolebadge.xxx / .card-back.role-xxx) et son
- *     équipe (team: "village" ou "loups") utilisée par checkWinner().
+ *     css/style.css, ex: .rolebadge.xxx / .card-back.role-xxx), son
+ *     équipe (team: "village" ou "loups") utilisée par checkWinner(), et
+ *     une description (affichée dans l'écran "Voir tous les rôles").
  *  2. La logique de tirage/victoire se trouve dans js/state.js.
  */
 const ROLE_INFO = {
-  "loup-garou": { label: "Loup-Garou", glyph: "🐺", cls: "loup", team: "loups" },
-  villageois: { label: "Villageois", glyph: "🌾", cls: "villageois", team: "village" },
-  voyante: { label: "Voyante", glyph: "🔮", cls: "voyante", team: "village" },
-  chasseur: { label: "Chasseur", glyph: "🏹", cls: "chasseur", team: "village" },
+  "loup-garou": {
+    label: "Loup-Garou",
+    glyph: "🐺",
+    cls: "loup",
+    team: "loups",
+    description:
+      "Chaque nuit, les loups-garous se concertent en secret pour désigner une victime à dévorer. Le camp des loups gagne dès qu'il est aussi nombreux ou plus nombreux que le reste du village.",
+  },
+  villageois: {
+    label: "Villageois",
+    glyph: "🌾",
+    cls: "villageois",
+    team: "village",
+    description:
+      "Aucun pouvoir particulier. Le jour, participe au débat et au vote pour tenter d'éliminer un loup-garou.",
+  },
+  voyante: {
+    label: "Voyante",
+    glyph: "🔮",
+    cls: "voyante",
+    team: "village",
+    description:
+      "Chaque nuit, regarde en secret la carte d'un joueur de son choix pour découvrir son rôle. S'il y a plusieurs Voyantes, chacune regarde une carte à son tour, sans que son identité soit révélée.",
+  },
+  chasseur: {
+    label: "Chasseur",
+    glyph: "🏹",
+    cls: "chasseur",
+    team: "village",
+    description:
+      "Quand il meurt, de nuit ou après un vote, abat aussitôt un autre joueur de son choix avant que la partie ne continue.",
+  },
 };

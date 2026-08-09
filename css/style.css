@@ -502,6 +502,40 @@ label.field-label {
   color: #f5b96a;
 }
 
+/* Aide-mémoire des rôles (écran "Voir tous les rôles") */
+.rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 22px;
+}
+.rule-card {
+  background: #12153080;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.rule-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.rule-glyph {
+  font-size: 20px;
+}
+.rule-name {
+  font-family: "Cinzel", serif;
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+}
+.rule-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
 .center-icon {
   font-size: 52px;
   text-align: center;

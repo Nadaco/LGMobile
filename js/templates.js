@@ -109,7 +109,37 @@ ${SPECIAL_ROLES.map((r) => {
     <div class="subtitle">Chaque joueur passera le téléphone à son tour pour piocher sa carte et inscrire son nom.</div>
 
     <button class="btn btn-primary" id="start-distribute">Commencer la distribution des rôles</button>
+    <button class="btn btn-ghost" id="view-rules" style="margin-top:12px;">Voir tous les rôles</button>
     ${getHistory().length > 0 ? `<button class="btn btn-ghost" id="view-stats" style="margin-top:12px;">Statistiques &amp; historique</button>` : ""}
+  `;
+}
+
+function tplRules() {
+  const roles = Object.values(ROLE_INFO);
+  return `
+    ${moonSvg("calm")}
+    <div class="eyebrow">Aide-mémoire</div>
+    <h2 class="stitle">Les rôles</h2>
+    <div class="subtitle">Comment fonctionne chaque rôle du jeu.</div>
+
+    <div class="rule-list">
+${roles
+  .map(
+    (r) => `
+  <div class="rule-card">
+    <div class="rule-head">
+      <span class="rule-glyph">${r.glyph}</span>
+      <span class="rule-name">${r.label}</span>
+      <span class="rolebadge ${r.cls}">${r.team === "loups" ? "Loups" : "Village"}</span>
+    </div>
+    <div class="rule-desc">${r.description}</div>
+  </div>
+`,
+  )
+  .join("")}
+    </div>
+
+    <button class="btn btn-primary" id="back-from-rules">Retour</button>
   `;
 }
 
