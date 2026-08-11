@@ -758,4 +758,22 @@ function tplRevealAllOverlay() {
   `;
 }
 
+// Confirmation en place (pas de window.confirm(), peu fiable en PWA
+// installée) : state.confirmDialog = { message, action } où action
+// identifie ce que #confirmDialogOk doit déclencher (js/app.js).
+function tplConfirmDialog() {
+  if (!state.confirmDialog) return "";
+  return `
+    <div class="reveal-overlay" id="confirmOverlay">
+<div class="reveal-sheet">
+  <h2 class="stitle">Confirmer</h2>
+  <div class="subtitle">${state.confirmDialog.message}</div>
+  <button class="btn btn-primary" id="confirmDialogOk">Confirmer</button>
+  <div style="height:8px"></div>
+  <button class="btn btn-ghost" id="confirmDialogCancel">Annuler</button>
+</div>
+    </div>
+  `;
+}
+
 /* ---------- render + wire events ---------- */

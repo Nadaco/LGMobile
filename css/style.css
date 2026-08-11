@@ -618,6 +618,29 @@ label.field-label {
   transform: scale(0.93);
 }
 
+.quit-fab {
+  position: fixed;
+  right: calc(18px + env(safe-area-inset-right));
+  top: calc(18px + env(safe-area-inset-top));
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #171b3ae0;
+  backdrop-filter: blur(6px);
+  color: var(--text-muted);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 40;
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.6);
+}
+.quit-fab:active {
+  transform: scale(0.93);
+}
+
 .reveal-overlay {
   position: fixed;
   inset: 0;
