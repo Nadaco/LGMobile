@@ -5,7 +5,8 @@
  *  - `state` : l'état courant de la partie (source unique de vérité)
  *  - `set()` / `resetGame()` : les seules façons de modifier `state`
  *  - helpers de jeu : shuffle, totalPlayers, normalizeSetup, checkWinner
- *  - persistance localStorage : historique des parties, noms récents
+ *  - persistance localStorage : historique des parties, noms récents,
+ *    configuration des rôles (nombre de chaque rôle choisi en configuration)
  *
  * Dépend de : ROLE_INFO (js/roles.js) — pas de dépendance directe ici,
  * mais computePlayerStats() se base sur les clés de rôle définies là-bas.
@@ -14,8 +15,14 @@
 
 /* ---------- utilitaires ---------- */
 
-let state = {
-  phase: "setup",
+// Configuration des rôles (nombre de chaque rôle), sauvegardée en local
+// pour être réutilisée d'une partie à l'autre. Ces deux fonctions sont
+// utilisées dès l'initialisation de `state` ci-dessous, donc placées
+// avant : les déclarations `function` sont hoistées, mais une valeur
+// dont l'initialiseur s'exécute avant sa propre déclaration textuelle ne
+// l'est pas (cas de STORAGE_KEYS plus bas), d'où ce bloc autonome.
+const SETUP_STORAGE_KEY = "lg_setup_v1";
+const DEFAULT_SETUP = {
   numVillageois: 4,
   numWolves: 1,
   numVoyantes: 0,
@@ -23,6 +30,41 @@ let state = {
   numFilles: 0,
   numCupidons: 0,
   numSorcieres: 0,
+};
+
+function loadSetup() {
+  try {
+    const raw = localStorage.getItem(SETUP_STORAGE_KEY);
+    return raw
+      ? { ...DEFAULT_SETUP, ...JSON.parse(raw) }
+      : { ...DEFAULT_SETUP };
+  } catch (e) {
+    return { ...DEFAULT_SETUP };
+  }
+}
+
+function saveSetup(setup) {
+  try {
+    localStorage.setItem(
+      SETUP_STORAGE_KEY,
+      JSON.stringify({
+        numVillageois: setup.numVillageois,
+        numWolves: setup.numWolves,
+        numVoyantes: setup.numVoyantes,
+        numChasseurs: setup.numChasseurs,
+        numFilles: setup.numFilles,
+        numCupidons: setup.numCupidons,
+        numSorcieres: setup.numSorcieres,
+      }),
+    );
+  } catch (e) {
+    /* storage unavailable, ignore */
+  }
+}
+
+let state = {
+  phase: "setup",
+  ...loadSetup(),
   deck: [],
   players: [], // {id, name, role, alive}
   distributeIndex: 0,
@@ -51,6 +93,7 @@ let state = {
   lastHunterVictimId: null,
   showHunterVictimCard: false,
   showAllCards: false,
+  confirmDialog: null, // { message, action } — confirmation en place, pas de window.confirm()
   winner: null,
 };
 
@@ -244,7 +287,7 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total < 3) numVillageois += 3 - total;
 
-  return {
+  const result = {
     numVillageois,
     numWolves,
     numVoyantes,
@@ -253,6 +296,8 @@ function normalizeSetup(next) {
     numCupidons,
     numSorcieres,
   };
+  saveSetup(result);
+  return result;
 }
 
 function checkWinner(players) {
@@ -326,13 +371,7 @@ function set(partial) {
 function resetGame() {
   state = {
     phase: "setup",
-    numVillageois: 4,
-    numWolves: 1,
-    numVoyantes: 0,
-    numChasseurs: 0,
-    numFilles: 0,
-    numCupidons: 0,
-    numSorcieres: 0,
+    ...loadSetup(),
     deck: [],
     players: [],
     distributeIndex: 0,
@@ -361,6 +400,7 @@ function resetGame() {
     lastHunterVictimId: null,
     showHunterVictimCard: false,
     showAllCards: false,
+    confirmDialog: null,
     winner: null,
   };
   render();

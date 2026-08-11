@@ -78,8 +78,15 @@ function render() {
   const fab = showFab
     ? `<button class="reveal-fab" id="revealFab" title="Voir toutes les cartes">🃏</button>`
     : "";
+  const showQuit = !["setup", "stats", "rules", "gameover"].includes(
+    state.phase,
+  );
+  const quitFab = showQuit
+    ? `<button class="quit-fab" id="quitGameFab" title="Arrêter la partie">✕</button>`
+    : "";
   const overlay = state.showAllCards ? tplRevealAllOverlay() : "";
-  app.innerHTML = `<div class="fade-in">${html}</div>${fab}${overlay}`;
+  const confirmDialog = tplConfirmDialog();
+  app.innerHTML = `<div class="fade-in">${html}</div>${fab}${quitFab}${overlay}${confirmDialog}`;
   wire();
 }
 
@@ -235,16 +242,13 @@ function wire() {
   if (backFromRules) backFromRules.onclick = () => set({ phase: "setup" });
   const clearHistoryBtn = app.querySelector("#clear-history");
   if (clearHistoryBtn)
-    clearHistoryBtn.onclick = () => {
-      if (
-        confirm(
-          "Effacer tout l'historique des parties sur cet appareil ?",
-        )
-      ) {
-        clearHistory();
-        render();
-      }
-    };
+    clearHistoryBtn.onclick = () =>
+      set({
+        confirmDialog: {
+          message: "Effacer tout l'historique des parties sur cet appareil ?",
+          action: "clear-history",
+        },
+      });
   const startDistribute = app.querySelector("#start-distribute");
   if (startDistribute)
     startDistribute.onclick = () => {
@@ -609,6 +613,38 @@ function wire() {
   // gameover
   const newGame = app.querySelector("#new-game");
   if (newGame) newGame.onclick = resetGame;
+
+  // quit game fab — abandonne la partie en cours, revient à l'accueil
+  const quitGameFab = app.querySelector("#quitGameFab");
+  if (quitGameFab)
+    quitGameFab.onclick = () =>
+      set({
+        confirmDialog: {
+          message: "Arrêter la partie en cours et revenir à l'accueil ?",
+          action: "quit-game",
+        },
+      });
+
+  // confirmation en place (remplace window.confirm())
+  const confirmDialogCancel = app.querySelector("#confirmDialogCancel");
+  if (confirmDialogCancel)
+    confirmDialogCancel.onclick = () => set({ confirmDialog: null });
+  const confirmDialogOk = app.querySelector("#confirmDialogOk");
+  if (confirmDialogOk)
+    confirmDialogOk.onclick = () => {
+      const action = state.confirmDialog && state.confirmDialog.action;
+      if (action === "quit-game") {
+        resetGame();
+      } else if (action === "clear-history") {
+        clearHistory();
+        set({ confirmDialog: null });
+      }
+    };
+  const confirmOverlay = app.querySelector("#confirmOverlay");
+  if (confirmOverlay)
+    confirmOverlay.onclick = (e) => {
+      if (e.target === confirmOverlay) set({ confirmDialog: null });
+    };
 
   // reveal-all fab
   const revealFab = app.querySelector("#revealFab");
