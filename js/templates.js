@@ -44,6 +44,7 @@ const SPECIAL_ROLES = [
   { key: "chasseur", count: () => state.numChasseurs },
   { key: "petite-fille", count: () => state.numFilles },
   { key: "cupidon", count: () => state.numCupidons },
+  { key: "sorciere", count: () => state.numSorcieres },
 ];
 
 function tplSetup() {
@@ -332,6 +333,48 @@ ${targets
   `;
 }
 
+function tplSorciere() {
+  if (state.witchStep === "life") {
+    const victim = state.players.find((p) => p.id === state.lastVictimId);
+    return `
+      ${moonSvg("night")}
+      <div class="eyebrow">Nuit ${state.round}</div>
+      <div class="center-icon">🧪</div>
+      <h2 class="stitle">La Sorcière se réveille</h2>
+      <div class="subtitle">Cette nuit, les loups-garous ont attaqué <strong>${escapeHtml(victim.name)}</strong>. Elle peut utiliser sa potion de vie, une seule fois dans la partie, pour la sauver.</div>
+      <button class="btn btn-primary" id="witch-save">Sauver ${escapeHtml(victim.name)} avec la potion de vie</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-ghost" id="witch-skip-life">Ne pas utiliser la potion de vie</button>
+    `;
+  }
+
+  const targets = state.players.filter((p) => p.alive);
+  return `
+    ${moonSvg("night")}
+    <div class="eyebrow">Nuit ${state.round}</div>
+    <div class="center-icon">☠️</div>
+    <h2 class="stitle">La potion de mort</h2>
+    <div class="subtitle">La Sorcière peut, une seule fois dans la partie, empoisonner un joueur de son choix.</div>
+    <div class="plist">
+${targets
+  .map(
+    (p) => `
+  <div class="pitem ${state.witchDeathTargetId === p.id ? "selected" : ""}" data-witch-death-target="${p.id}">
+    <div class="dot"></div>
+    <div class="name">${escapeHtml(p.name)}</div>
+  </div>
+`,
+  )
+  .join("")}
+<div class="pitem pitem-none ${state.witchDeathTargetId === "none" ? "selected" : ""}" data-witch-death-target="none">
+  <div class="dot"></div>
+  <div class="name">Ne pas utiliser la potion de mort</div>
+</div>
+    </div>
+    <button class="btn btn-primary" id="confirm-witch-death" ${state.witchDeathTargetId === null ? "disabled" : ""}>Confirmer</button>
+  `;
+}
+
 function tplNightTransition() {
   const voyanteNext = actingRoleIds("voyante").length > 0;
   return `
@@ -407,50 +450,72 @@ function tplNightVoyanteSleep() {
   `;
 }
 
-// Amoureux mort de chagrin suite à la dernière mort résolue (loups, vote,
-// ou tir du Chasseur) : annoncé sur le même écran, sans mise en scène
-// dédiée puisque, contrairement au Chasseur, il n'y a aucun choix à faire.
-function tplLoverCascade() {
-  if (!state.lastLoverVictimId) return "";
-  const lover = state.players.find((p) => p.id === state.lastLoverVictimId);
-  const info = ROLE_INFO[lover.role];
+// Petit bloc "mort annexe" (annoncé sans mise en scène ni choix à faire,
+// contrairement au Chasseur) : amoureux mort de chagrin, ou victime de la
+// potion de mort de la Sorcière.
+function tplExtraDeath(label, player) {
+  if (!player) return "";
+  const info = ROLE_INFO[player.role];
   return `
-<label class="field-label">Mort·e de chagrin</label>
+<label class="field-label">${label}</label>
 <div class="roster">
   <div class="ritem dead">
-    <span>💘 ${escapeHtml(lover.name)}</span>
+    <span>${escapeHtml(player.name)}</span>
     <span class="rolebadge ${info.cls}">${info.label}</span>
   </div>
 </div>
 `;
 }
 
-function tplNightReveal() {
-  const victim = state.players.find((p) => p.id === state.lastVictimId);
-  const info = ROLE_INFO[victim.role];
-  const cascadeVictim = state.lastLoverVictimId
+function tplLoverCascade() {
+  const lover = state.lastLoverVictimId
     ? state.players.find((p) => p.id === state.lastLoverVictimId)
     : null;
-  // Si la victime (ou l'amoureux mort de chagrin) est le Chasseur, sa
-  // riposte peut encore changer l'issue : ne pas annoncer "Voir le
-  // résultat" avant qu'elle ait eu lieu.
-  const gameEnds =
-    victim.role !== "chasseur" &&
-    (!cascadeVictim || cascadeVictim.role !== "chasseur") &&
-    checkWinner(state.players) !== null;
+  return tplExtraDeath(
+    "Mort·e de chagrin",
+    lover && { ...lover, name: `💘 ${lover.name}` },
+  );
+}
+
+function tplWitchVictim() {
+  const victim = state.lastWitchVictimId
+    ? state.players.find((p) => p.id === state.lastWitchVictimId)
+    : null;
+  return tplExtraDeath("Empoisonné·e par la Sorcière", victim);
+}
+
+function tplNightReveal() {
+  const wolfTarget = state.players.find((p) => p.id === state.lastVictimId);
+  const wolfDied = !wolfTarget.alive;
+  const info = ROLE_INFO[wolfTarget.role];
+  const loverVictim = state.lastLoverVictimId
+    ? state.players.find((p) => p.id === state.lastLoverVictimId)
+    : null;
+  const witchVictim = state.lastWitchVictimId
+    ? state.players.find((p) => p.id === state.lastWitchVictimId)
+    : null;
+  // Si une des morts de la nuit est le Chasseur, sa riposte peut encore
+  // changer l'issue : ne pas annoncer "Voir le résultat" avant qu'elle
+  // ait eu lieu.
+  const pendingHunter = [wolfDied ? wolfTarget : null, loverVictim, witchVictim].some(
+    (v) => v && v.role === "chasseur",
+  );
+  const gameEnds = !pendingHunter && checkWinner(state.players) !== null;
 
   return `
     ${moonSvg("blood")}
     <div class="center-icon">☀️</div>
     <h2 class="stitle">Le village se réveille</h2>
-    <div class="subtitle">Cette nuit, <strong>${escapeHtml(victim.name)}</strong> a été dévoré(e) par les loups-garous.</div>
-
-    <div class="card-zone">
+    ${
+      wolfDied
+        ? `
+<div class="subtitle">Cette nuit, <strong>${escapeHtml(wolfTarget.name)}</strong> a été dévoré(e) par les loups-garous.</div>
+<div class="card-zone">
 <div class="card-flip ${state.showVictimCard ? "flipped" : ""}">
   <div class="card-inner">
     <div class="card-face card-front">
       <div class="glyph">🌒</div>
-      <div class="hint">Carte de ${escapeHtml(victim.name)}</div>
+      <div class="hint">Carte de ${escapeHtml(wolfTarget.name)}</div>
     </div>
     <div class="card-face card-back role-${info.cls}">
       <div class="glyph">${info.glyph}</div>
@@ -458,9 +523,13 @@ function tplNightReveal() {
     </div>
   </div>
 </div>
-    </div>
-    <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
+</div>
+<button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
+`
+        : `<div class="subtitle">La Sorcière a sauvé la victime des loups-garous cette nuit : personne n'est mort de leur attaque.</div>`
+    }
 
+    ${tplWitchVictim()}
     ${tplLoverCascade()}
 
     <div style="height:8px"></div>
