@@ -36,6 +36,9 @@ function render() {
     case "night_wolves":
       html = tplNightWolves();
       break;
+    case "night_sorciere":
+      html = tplSorciere();
+      break;
     case "night_transition":
       html = tplNightTransition();
       break;
@@ -78,6 +81,26 @@ function render() {
   const overlay = state.showAllCards ? tplRevealAllOverlay() : "";
   app.innerHTML = `<div class="fade-in">${html}</div>${fab}${overlay}`;
   wire();
+}
+
+// Une fois la potion de vie utilisée (ou passée), enchaîne sur la potion
+// de mort si elle est encore disponible, sinon termine le tour de la
+// Sorcière directement.
+function advanceFromWitchLife(players, lifePotionUsed) {
+  if (!state.witchDeathPotionUsed) {
+    set({
+      players,
+      witchLifePotionUsed: lifePotionUsed,
+      witchStep: "death",
+      witchDeathTargetId: null,
+    });
+  } else {
+    set({
+      players,
+      witchLifePotionUsed: lifePotionUsed,
+      phase: "night_transition",
+    });
+  }
 }
 
 // Calcule (sans l'appliquer) la transition à effectuer une fois toutes
@@ -182,6 +205,7 @@ function wire() {
     chasseur: "numChasseurs",
     "petite-fille": "numFilles",
     cupidon: "numCupidons",
+    sorciere: "numSorcieres",
   };
   app.querySelectorAll("[data-role-add]").forEach((el) => {
     el.onclick = () => {
@@ -230,6 +254,7 @@ function wire() {
         ...Array(state.numChasseurs).fill("chasseur"),
         ...Array(state.numFilles).fill("petite-fille"),
         ...Array(state.numCupidons).fill("cupidon"),
+        ...Array(state.numSorcieres).fill("sorciere"),
         ...Array(state.numVillageois).fill("villageois"),
       ]);
       set({
@@ -354,10 +379,61 @@ function wire() {
       );
       const cascade = applyLoverCascade(players);
       players = cascade.players;
+      const witchCanAct =
+        (!state.witchLifePotionUsed || !state.witchDeathPotionUsed) &&
+        players.some(
+          (p) =>
+            p.role === "sorciere" && (p.alive || p.id === state.targetId),
+        );
       set({
         players,
         lastVictimId: state.targetId,
         lastLoverVictimId: cascade.extraDeathId,
+        lastWitchVictimId: null,
+        witchStep: !state.witchLifePotionUsed ? "life" : "death",
+        witchDeathTargetId: null,
+        phase: witchCanAct ? "night_sorciere" : "night_transition",
+      });
+    };
+
+  // night sorcière — potion de vie (sauver la victime des loups), puis
+  // potion de mort (empoisonner un autre joueur), chacune à usage unique
+  // pour toute la partie.
+  const witchSave = app.querySelector("#witch-save");
+  if (witchSave)
+    witchSave.onclick = () => {
+      const players = state.players.map((p) =>
+        p.id === state.lastVictimId ? { ...p, alive: true } : p,
+      );
+      advanceFromWitchLife(players, true);
+    };
+  const witchSkipLife = app.querySelector("#witch-skip-life");
+  if (witchSkipLife)
+    witchSkipLife.onclick = () => advanceFromWitchLife(state.players, false);
+
+  app.querySelectorAll("[data-witch-death-target]").forEach((el) => {
+    el.onclick = () => {
+      const v = el.getAttribute("data-witch-death-target");
+      set({ witchDeathTargetId: v === "none" ? "none" : Number(v) });
+    };
+  });
+  const confirmWitchDeath = app.querySelector("#confirm-witch-death");
+  if (confirmWitchDeath)
+    confirmWitchDeath.onclick = () => {
+      if (state.witchDeathTargetId === "none") {
+        set({ phase: "night_transition" });
+        return;
+      }
+      let players = state.players.map((p) =>
+        p.id === state.witchDeathTargetId ? { ...p, alive: false } : p,
+      );
+      const cascade = applyLoverCascade(players);
+      players = cascade.players;
+      set({
+        players,
+        witchDeathPotionUsed: true,
+        lastWitchVictimId: state.witchDeathTargetId,
+        lastLoverVictimId: cascade.extraDeathId ?? state.lastLoverVictimId,
         phase: "night_transition",
       });
     };
@@ -459,9 +535,14 @@ function wire() {
   const continueBtn = app.querySelector("#continue-after-reveal");
   if (continueBtn)
     continueBtn.onclick = () => {
-      const deadIds = [state.lastVictimId, state.lastLoverVictimId].filter(
-        (id) => id !== null,
+      const wolfTarget = state.players.find(
+        (p) => p.id === state.lastVictimId,
       );
+      const deadIds = [
+        wolfTarget.alive ? null : state.lastVictimId,
+        state.lastLoverVictimId,
+        state.lastWitchVictimId,
+      ].filter((id) => id !== null);
       const players = state.players.map((p) =>
         deadIds.includes(p.id) ? { ...p, roleRevealed: true } : p,
       );

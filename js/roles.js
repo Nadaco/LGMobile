@@ -58,4 +58,12 @@ const ROLE_INFO = {
     description:
       "La première nuit uniquement, désigne deux joueurs (lui y compris s'il le souhaite) qui tombent amoureux l'un de l'autre. Si l'un des deux meurt, l'autre meurt aussitôt de chagrin. S'ils sont de camps opposés et sont les deux derniers survivants, les amoureux gagnent ensemble.",
   },
+  sorciere: {
+    label: "Sorcière",
+    glyph: "🧪",
+    cls: "sorciere",
+    team: "village",
+    description:
+      "Possède deux potions à usage unique pour toute la partie. Chaque nuit, après l'attaque des loups-garous, elle peut utiliser sa potion de vie pour sauver leur victime, et/ou sa potion de mort pour empoisonner un joueur de son choix.",
+  },
 };

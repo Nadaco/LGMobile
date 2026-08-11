@@ -22,6 +22,7 @@ let state = {
   numChasseurs: 0,
   numFilles: 0,
   numCupidons: 0,
+  numSorcieres: 0,
   deck: [],
   players: [], // {id, name, role, alive}
   distributeIndex: 0,
@@ -33,6 +34,11 @@ let state = {
   lovers: [], // ids des deux amoureux désignés par Cupidon la nuit 1
   loverSelection: [], // sélection en cours pendant le tour de Cupidon
   lastLoverVictimId: null, // amoureux mort de chagrin lors de la dernière mort résolue
+  witchLifePotionUsed: false,
+  witchDeathPotionUsed: false,
+  witchStep: "life", // "life" | "death" — sous-écran affiché pendant le tour de la Sorcière
+  witchDeathTargetId: null,
+  lastWitchVictimId: null, // joueur empoisonné par la Sorcière la dernière nuit
   voyanteQueue: [], // ids des voyantes qui n'ont pas encore regardé une carte cette nuit
   voyanteTargetId: null,
   voyanteRevealed: false,
@@ -176,15 +182,17 @@ function totalPlayers() {
     state.numVoyantes +
     state.numChasseurs +
     state.numFilles +
-    state.numCupidons
+    state.numCupidons +
+    state.numSorcieres
   );
 }
 
 // Ajuste numVillageois/numWolves/numVoyantes/numChasseurs/numFilles/
-// numCupidons pour rester cohérents entre eux : entre 3 et 20 joueurs au
-// total, et les loups ne doivent jamais être aussi ou plus nombreux que
-// le reste du village. Les villageois absorbent les ajustements (comme
-// le faisait numPlayers), les autres rôles spéciaux en dernier recours.
+// numCupidons/numSorcieres pour rester cohérents entre eux : entre 3 et
+// 20 joueurs au total, et les loups ne doivent jamais être aussi ou plus
+// nombreux que le reste du village. Les villageois absorbent les
+// ajustements (comme le faisait numPlayers), les autres rôles spéciaux
+// en dernier recours.
 function normalizeSetup(next) {
   let numVillageois = Math.max(
     0,
@@ -195,9 +203,15 @@ function normalizeSetup(next) {
   let numChasseurs = Math.max(0, next.numChasseurs ?? state.numChasseurs);
   let numFilles = Math.max(0, next.numFilles ?? state.numFilles);
   let numCupidons = Math.max(0, next.numCupidons ?? state.numCupidons);
+  let numSorcieres = Math.max(0, next.numSorcieres ?? state.numSorcieres);
 
   const villageTeam = () =>
-    numVillageois + numVoyantes + numChasseurs + numFilles + numCupidons;
+    numVillageois +
+    numVoyantes +
+    numChasseurs +
+    numFilles +
+    numCupidons +
+    numSorcieres;
 
   let total = villageTeam() + numWolves;
   if (total > 20) numVillageois = Math.max(0, numVillageois - (total - 20));
@@ -209,6 +223,9 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total > 20) {
     let overflow = total - 20;
+    const cutSorcieres = Math.min(numSorcieres, overflow);
+    numSorcieres -= cutSorcieres;
+    overflow -= cutSorcieres;
     const cutCupidons = Math.min(numCupidons, overflow);
     numCupidons -= cutCupidons;
     overflow -= cutCupidons;
@@ -234,6 +251,7 @@ function normalizeSetup(next) {
     numChasseurs,
     numFilles,
     numCupidons,
+    numSorcieres,
   };
 }
 
@@ -314,6 +332,7 @@ function resetGame() {
     numChasseurs: 0,
     numFilles: 0,
     numCupidons: 0,
+    numSorcieres: 0,
     deck: [],
     players: [],
     distributeIndex: 0,
@@ -325,6 +344,11 @@ function resetGame() {
     lovers: [],
     loverSelection: [],
     lastLoverVictimId: null,
+    witchLifePotionUsed: false,
+    witchDeathPotionUsed: false,
+    witchStep: "life",
+    witchDeathTargetId: null,
+    lastWitchVictimId: null,
     voyanteQueue: [],
     voyanteTargetId: null,
     voyanteRevealed: false,

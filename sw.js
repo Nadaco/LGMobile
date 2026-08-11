@@ -1,6 +1,6 @@
 // Bump this version string every time you change index.html / assets
 // so returning players get the fresh version instead of a stale cache.
-const CACHE_VERSION = 'loup-garou-v16';
+const CACHE_VERSION = 'loup-garou-v17';
 
 const APP_SHELL = [
   './',
