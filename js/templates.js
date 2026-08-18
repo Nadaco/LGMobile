@@ -39,12 +39,16 @@ function moonSvg(mode) {
 // Rôles optionnels proposés sous forme de puces dans la configuration.
 // Ajouter un rôle spécial ici (+ sa case dans SPECIAL_ROLE_FIELDS côté
 // app.js) suffit pour qu'il apparaisse, sans toucher au reste de l'écran.
+// max: 1 pour les rôles qui n'ont de sens qu'en un seul exemplaire (un
+// couple, une seule réserve de potions) — la puce devient un simple
+// interrupteur au lieu d'un stepper. Omis (illimité) pour les rôles où
+// chaque instance agit indépendamment.
 const SPECIAL_ROLES = [
-  { key: "voyante", count: () => state.numVoyantes },
+  { key: "voyante", count: () => state.numVoyantes, max: 1 },
   { key: "chasseur", count: () => state.numChasseurs },
   { key: "petite-fille", count: () => state.numFilles },
-  { key: "cupidon", count: () => state.numCupidons },
-  { key: "sorciere", count: () => state.numSorcieres },
+  { key: "cupidon", count: () => state.numCupidons, max: 1 },
+  { key: "sorciere", count: () => state.numSorcieres, max: 1 },
 ];
 
 function tplSetup() {
@@ -89,6 +93,14 @@ ${SPECIAL_ROLES.map((r) => {
   if (count === 0) {
     return `
   <button class="role-chip" data-role-add="${r.key}">
+    <span class="chip-glyph">${info.glyph}</span>
+    <span class="chip-label">${info.label}</span>
+  </button>
+`;
+  }
+  if (r.max === 1) {
+    return `
+  <button class="role-chip active ${info.cls}" data-role-remove="${r.key}">
     <span class="chip-glyph">${info.glyph}</span>
     <span class="chip-label">${info.label}</span>
   </button>
