@@ -12,7 +12,18 @@
 
 const app = document.getElementById("app");
 
+// Mis à true quand un nouveau service worker vient de prendre la main
+// (voir l'enregistrement en bas de fichier). On ne recharge que depuis
+// l'accueil, jamais en pleine partie, pour ne pas effacer une partie en
+// cours — sinon on reste en attente et render() rechargera dès que
+// state.phase repassera à "setup" (fin de partie, ou bouton arrêter).
+let swUpdateReady = false;
+
 function render() {
+  if (swUpdateReady && state.phase === "setup") {
+    window.location.reload();
+    return;
+  }
   let html = "";
   switch (state.phase) {
     case "setup":
@@ -723,5 +734,12 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {
       /* offline support unavailable, app still works online */
     });
+  });
+  // Dès qu'une nouvelle version du service worker prend la main (mise à
+  // jour déployée), on recharge automatiquement — plus besoin de Ctrl+F5 —
+  // mais seulement quand c'est sans risque (voir swUpdateReady ci-dessus).
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    swUpdateReady = true;
+    if (state.phase === "setup") window.location.reload();
   });
 }

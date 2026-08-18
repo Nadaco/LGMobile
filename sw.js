@@ -1,6 +1,6 @@
 // Bump this version string every time you change index.html / assets
 // so returning players get the fresh version instead of a stale cache.
-const CACHE_VERSION = 'loup-garou-v22';
+const CACHE_VERSION = 'loup-garou-v23';
 
 const APP_SHELL = [
   './',
@@ -19,7 +19,18 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_VERSION).then((cache) =>
+      // cache.addAll() (and a plain fetch()) can still be served from the
+      // browser's own HTTP cache, not just the Cache Storage API — so a
+      // CACHE_VERSION bump alone doesn't guarantee fresh files land in the
+      // new cache. { cache: 'reload' } forces each request past that layer
+      // straight to the network.
+      Promise.all(
+        APP_SHELL.map((url) =>
+          fetch(url, { cache: 'reload' }).then((response) => cache.put(url, response))
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -59,7 +70,7 @@ self.addEventListener('fetch', (event) => {
   // Cache-first for static assets (icons, manifest) that rarely change.
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
+      const network = fetch(event.request, { cache: 'reload' })
         .then((response) => {
           if (response && response.ok) {
             const clone = response.clone();
