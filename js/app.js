@@ -232,6 +232,12 @@ function wire() {
       set(normalizeSetup({ [field]: state[field] - 1 }));
     };
   });
+  app.querySelectorAll("[data-role-remove]").forEach((el) => {
+    el.onclick = () => {
+      const field = SPECIAL_ROLE_FIELDS[el.getAttribute("data-role-remove")];
+      set(normalizeSetup({ [field]: 0 }));
+    };
+  });
   const viewStats = app.querySelector("#view-stats");
   if (viewStats) viewStats.onclick = () => set({ phase: "stats" });
   const backToSetup = app.querySelector("#back-to-setup");

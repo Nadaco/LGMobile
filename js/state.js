@@ -242,11 +242,24 @@ function normalizeSetup(next) {
     next.numVillageois ?? state.numVillageois,
   );
   let numWolves = Math.max(1, next.numWolves ?? state.numWolves);
-  let numVoyantes = Math.max(0, next.numVoyantes ?? state.numVoyantes);
+  // Voyante, Cupidon et Sorcière n'ont de sens qu'en un seul exemplaire
+  // (un couple, une seule réserve de potions) : plafonnés à 1. Chasseur
+  // et Petite Fille restent libres, chaque instance agissant de façon
+  // indépendante.
+  let numVoyantes = Math.max(
+    0,
+    Math.min(1, next.numVoyantes ?? state.numVoyantes),
+  );
   let numChasseurs = Math.max(0, next.numChasseurs ?? state.numChasseurs);
   let numFilles = Math.max(0, next.numFilles ?? state.numFilles);
-  let numCupidons = Math.max(0, next.numCupidons ?? state.numCupidons);
-  let numSorcieres = Math.max(0, next.numSorcieres ?? state.numSorcieres);
+  let numCupidons = Math.max(
+    0,
+    Math.min(1, next.numCupidons ?? state.numCupidons),
+  );
+  let numSorcieres = Math.max(
+    0,
+    Math.min(1, next.numSorcieres ?? state.numSorcieres),
+  );
 
   const villageTeam = () =>
     numVillageois +
