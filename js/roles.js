@@ -66,4 +66,12 @@ const ROLE_INFO = {
     description:
       "Possède deux potions à usage unique pour toute la partie. Chaque nuit, après l'attaque des loups-garous, elle peut utiliser sa potion de vie pour sauver leur victime, et/ou sa potion de mort pour empoisonner un joueur de son choix.",
   },
+  ancien: {
+    label: "L'Ancien",
+    glyph: "🧓",
+    cls: "ancien",
+    team: "village",
+    description:
+      "Résiste silencieusement à la première attaque des loups-garous (personne ne l'apprend) ; il meurt normalement à la deuxième. S'il meurt autrement — vote du village ou pouvoir d'un villageois — tous les villageois perdent immédiatement leurs pouvoirs pour le reste de la partie.",
+  },
 };
