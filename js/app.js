@@ -118,32 +118,45 @@ function finishRoundPartial(context, players) {
   const winner = checkWinner(players);
   if (winner) {
     recordGameResult(players, winner, state.round);
-    return { players, phase: "gameover", winner };
+    return {
+      players,
+      phase: "gameover",
+      winner,
+      ancienPowersJustDisabled: false,
+    };
   }
   if (context === "night") {
-    return { players, phase: "day_vote", dayTargetId: undefined };
+    return {
+      players,
+      phase: "day_vote",
+      dayTargetId: undefined,
+      ancienPowersJustDisabled: false,
+    };
   }
   return {
     players,
     phase: "night_sleep",
     round: state.round + 1,
     targetId: null,
+    ancienPowersJustDisabled: false,
   };
 }
 
 // Une fois la mort (ou les morts, si l'amoureux d'une victime meurt de
 // chagrin) annoncée(s), chaque Chasseur parmi elles rétorque aussitôt ;
-// sinon la manche se termine.
+// sinon la manche se termine. Aucune riposte si les pouvoirs villageois
+// sont désactivés (l'Ancien a été tué par le vote ou un pouvoir).
 function seedHunterOrFinish(victims, context, players) {
-  const hunterIds = victims
-    .filter((v) => v && v.role === "chasseur")
-    .map((v) => v.id);
+  const hunterIds = state.villagePowersDisabled
+    ? []
+    : victims.filter((v) => v && v.role === "chasseur").map((v) => v.id);
   if (hunterIds.length > 0) {
     set({
       players,
       hunterQueue: hunterIds,
       hunterContext: context,
       hunterTargetId: null,
+      ancienPowersJustDisabled: false,
       phase: context === "night" ? "night_hunter" : "day_hunter",
     });
   } else {
@@ -161,16 +174,22 @@ function resolveHunterShot(context) {
   let players = state.players.map((p) =>
     p.id === targetId ? { ...p, alive: false } : p,
   );
+  const shotPlayer = players.find((p) => p.id === targetId);
+  const disablesPowers = shotPlayer.role === "ancien";
   const cascade = applyLoverCascade(players);
   players = cascade.players;
-  const shotPlayer = players.find((p) => p.id === targetId);
   const cascadeVictim = cascade.extraDeathId
     ? players.find((p) => p.id === cascade.extraDeathId)
     : null;
   let newQueue = state.hunterQueue.slice(1);
-  if (shotPlayer.role === "chasseur") newQueue = [...newQueue, shotPlayer.id];
-  if (cascadeVictim && cascadeVictim.role === "chasseur")
-    newQueue = [...newQueue, cascadeVictim.id];
+  // Si ce tir vient de tuer l'Ancien, les pouvoirs villageois (dont la
+  // riposte du Chasseur) sont désactivés : pas de nouvelle chaîne.
+  if (!disablesPowers && !state.villagePowersDisabled) {
+    if (shotPlayer.role === "chasseur")
+      newQueue = [...newQueue, shotPlayer.id];
+    if (cascadeVictim && cascadeVictim.role === "chasseur")
+      newQueue = [...newQueue, cascadeVictim.id];
+  }
   set({
     players,
     hunterQueue: newQueue,
@@ -178,6 +197,8 @@ function resolveHunterShot(context) {
     lastHunterVictimId: targetId,
     lastLoverVictimId: cascade.extraDeathId,
     showHunterVictimCard: false,
+    villagePowersDisabled: state.villagePowersDisabled || disablesPowers,
+    ancienPowersJustDisabled: disablesPowers,
     phase: context === "night" ? "night_hunter_reveal" : "day_hunter_reveal",
   });
 }
@@ -213,6 +234,7 @@ function wire() {
     "petite-fille": "numFilles",
     cupidon: "numCupidons",
     sorciere: "numSorcieres",
+    ancien: "numAnciens",
   };
   app.querySelectorAll("[data-role-add]").forEach((el) => {
     el.onclick = () => {
@@ -265,6 +287,7 @@ function wire() {
         ...Array(state.numFilles).fill("petite-fille"),
         ...Array(state.numCupidons).fill("cupidon"),
         ...Array(state.numSorcieres).fill("sorciere"),
+        ...Array(state.numAnciens).fill("ancien"),
         ...Array(state.numVillageois).fill("villageois"),
       ]);
       set({
@@ -384,13 +407,25 @@ function wire() {
   const confirmTarget = app.querySelector("#confirm-target");
   if (confirmTarget)
     confirmTarget.onclick = () => {
-      let players = state.players.map((p) =>
-        p.id === state.targetId ? { ...p, alive: false } : p,
-      );
+      const target = state.players.find((p) => p.id === state.targetId);
+      // L'Ancien résiste silencieusement à sa première attaque des
+      // loups-garous : personne (y compris lui) n'en est averti.
+      const ancienAbsorbs =
+        target.role === "ancien" && !state.ancienExtraLifeUsed;
+      let players = ancienAbsorbs
+        ? state.players
+        : state.players.map((p) =>
+            p.id === state.targetId ? { ...p, alive: false } : p,
+          );
       const cascade = applyLoverCascade(players);
       players = cascade.players;
+      // Si l'Ancien vient d'absorber le coup, il n'y a rien à sauver :
+      // la Sorcière ne se voit proposer que la potion de mort le cas
+      // échéant.
+      const witchLifeRelevant = !ancienAbsorbs && !state.witchLifePotionUsed;
       const witchCanAct =
-        (!state.witchLifePotionUsed || !state.witchDeathPotionUsed) &&
+        !state.villagePowersDisabled &&
+        (witchLifeRelevant || !state.witchDeathPotionUsed) &&
         players.some(
           (p) =>
             p.role === "sorciere" && (p.alive || p.id === state.targetId),
@@ -400,7 +435,9 @@ function wire() {
         lastVictimId: state.targetId,
         lastLoverVictimId: cascade.extraDeathId,
         lastWitchVictimId: null,
-        witchStep: !state.witchLifePotionUsed ? "life" : "death",
+        ancienExtraLifeUsed: ancienAbsorbs || state.ancienExtraLifeUsed,
+        ancienPowersJustDisabled: false,
+        witchStep: witchLifeRelevant ? "life" : "death",
         witchDeathTargetId: null,
         phase: witchCanAct ? "night_sorciere" : "night_transition",
       });
@@ -437,6 +474,10 @@ function wire() {
       let players = state.players.map((p) =>
         p.id === state.witchDeathTargetId ? { ...p, alive: false } : p,
       );
+      const poisoned = players.find(
+        (p) => p.id === state.witchDeathTargetId,
+      );
+      const disablesPowers = poisoned.role === "ancien";
       const cascade = applyLoverCascade(players);
       players = cascade.players;
       set({
@@ -444,6 +485,8 @@ function wire() {
         witchDeathPotionUsed: true,
         lastWitchVictimId: state.witchDeathTargetId,
         lastLoverVictimId: cascade.extraDeathId ?? state.lastLoverVictimId,
+        villagePowersDisabled: state.villagePowersDisabled || disablesPowers,
+        ancienPowersJustDisabled: disablesPowers,
         phase: "night_transition",
       });
     };
@@ -452,7 +495,9 @@ function wire() {
   const transitionContinue = app.querySelector("#night-transition-continue");
   if (transitionContinue)
     transitionContinue.onclick = () => {
-      const voyantes = actingRoleIds("voyante");
+      const voyantes = state.villagePowersDisabled
+        ? []
+        : actingRoleIds("voyante");
       if (voyantes.length > 0) {
         set({
           phase: "night_voyante",
@@ -529,6 +574,7 @@ function wire() {
       if (state.hunterQueue.length > 0) {
         set({
           players,
+          ancienPowersJustDisabled: false,
           phase:
             state.hunterContext === "night" ? "night_hunter" : "day_hunter",
         });
@@ -574,6 +620,7 @@ function wire() {
         set({
           lastDayVictimId: null,
           lastLoverVictimId: null,
+          ancienPowersJustDisabled: false,
           showDayVictimCard: false,
           phase: "day_reveal",
         });
@@ -581,12 +628,16 @@ function wire() {
         let players = state.players.map((p) =>
           p.id === state.dayTargetId ? { ...p, alive: false } : p,
         );
+        const votedOut = players.find((p) => p.id === state.dayTargetId);
+        const disablesPowers = votedOut.role === "ancien";
         const cascade = applyLoverCascade(players);
         players = cascade.players;
         set({
           players,
           lastDayVictimId: state.dayTargetId,
           lastLoverVictimId: cascade.extraDeathId,
+          villagePowersDisabled: state.villagePowersDisabled || disablesPowers,
+          ancienPowersJustDisabled: disablesPowers,
           showDayVictimCard: false,
           phase: "day_reveal",
         });

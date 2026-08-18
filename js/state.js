@@ -30,6 +30,7 @@ const DEFAULT_SETUP = {
   numFilles: 0,
   numCupidons: 0,
   numSorcieres: 0,
+  numAnciens: 0,
 };
 
 function loadSetup() {
@@ -55,6 +56,7 @@ function saveSetup(setup) {
         numFilles: setup.numFilles,
         numCupidons: setup.numCupidons,
         numSorcieres: setup.numSorcieres,
+        numAnciens: setup.numAnciens,
       }),
     );
   } catch (e) {
@@ -92,6 +94,9 @@ let state = {
   hunterContext: null, // "night" | "day" — où renvoyer une fois la riposte résolue
   lastHunterVictimId: null,
   showHunterVictimCard: false,
+  ancienExtraLifeUsed: false, // l'Ancien a déjà résisté à une attaque des loups
+  villagePowersDisabled: false, // l'Ancien est mort par le vote/un pouvoir : plus aucun pouvoir villageois
+  ancienPowersJustDisabled: false, // notice transitoire, affichée une fois puis effacée
   showAllCards: false,
   confirmDialog: null, // { message, action } — confirmation en place, pas de window.confirm()
   winner: null,
@@ -226,7 +231,8 @@ function totalPlayers() {
     state.numChasseurs +
     state.numFilles +
     state.numCupidons +
-    state.numSorcieres
+    state.numSorcieres +
+    state.numAnciens
   );
 }
 
@@ -260,6 +266,10 @@ function normalizeSetup(next) {
     0,
     Math.min(1, next.numSorcieres ?? state.numSorcieres),
   );
+  let numAnciens = Math.max(
+    0,
+    Math.min(1, next.numAnciens ?? state.numAnciens),
+  );
 
   const villageTeam = () =>
     numVillageois +
@@ -267,7 +277,8 @@ function normalizeSetup(next) {
     numChasseurs +
     numFilles +
     numCupidons +
-    numSorcieres;
+    numSorcieres +
+    numAnciens;
 
   let total = villageTeam() + numWolves;
   if (total > 20) numVillageois = Math.max(0, numVillageois - (total - 20));
@@ -279,6 +290,9 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total > 20) {
     let overflow = total - 20;
+    const cutAnciens = Math.min(numAnciens, overflow);
+    numAnciens -= cutAnciens;
+    overflow -= cutAnciens;
     const cutSorcieres = Math.min(numSorcieres, overflow);
     numSorcieres -= cutSorcieres;
     overflow -= cutSorcieres;
@@ -308,6 +322,7 @@ function normalizeSetup(next) {
     numFilles,
     numCupidons,
     numSorcieres,
+    numAnciens,
   };
   saveSetup(result);
   return result;
@@ -412,6 +427,9 @@ function resetGame() {
     hunterContext: null,
     lastHunterVictimId: null,
     showHunterVictimCard: false,
+    ancienExtraLifeUsed: false,
+    villagePowersDisabled: false,
+    ancienPowersJustDisabled: false,
     showAllCards: false,
     confirmDialog: null,
     winner: null,

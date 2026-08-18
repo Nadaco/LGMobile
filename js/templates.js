@@ -49,6 +49,7 @@ const SPECIAL_ROLES = [
   { key: "petite-fille", count: () => state.numFilles },
   { key: "cupidon", count: () => state.numCupidons, max: 1 },
   { key: "sorciere", count: () => state.numSorcieres, max: 1 },
+  { key: "ancien", count: () => state.numAnciens, max: 1 },
 ];
 
 function tplSetup() {
@@ -388,7 +389,8 @@ ${targets
 }
 
 function tplNightTransition() {
-  const voyanteNext = actingRoleIds("voyante").length > 0;
+  const voyanteNext =
+    !state.villagePowersDisabled && actingRoleIds("voyante").length > 0;
   return `
     ${moonSvg("night")}
     <div class="eyebrow">Nuit ${state.round}</div>
@@ -496,6 +498,16 @@ function tplWitchVictim() {
   return tplExtraDeath("Empoisonné·e par la Sorcière", victim);
 }
 
+// Annoncé une seule fois, sur l'écran où la mort de l'Ancien par le vote
+// ou un pouvoir villageois vient d'être révélée (js/app.js efface
+// ensuite ancienPowersJustDisabled en quittant cet écran).
+function tplPowersDisabledNotice() {
+  if (!state.ancienPowersJustDisabled) return "";
+  return `
+<div class="subtitle" style="color:var(--accent-blood-bright);">⚠️ L'Ancien a été tué par le village : tous les villageois perdent leurs pouvoirs pour le reste de la partie.</div>
+`;
+}
+
 function tplNightReveal() {
   const wolfTarget = state.players.find((p) => p.id === state.lastVictimId);
   const wolfDied = !wolfTarget.alive;
@@ -508,10 +520,13 @@ function tplNightReveal() {
     : null;
   // Si une des morts de la nuit est le Chasseur, sa riposte peut encore
   // changer l'issue : ne pas annoncer "Voir le résultat" avant qu'elle
-  // ait eu lieu.
-  const pendingHunter = [wolfDied ? wolfTarget : null, loverVictim, witchVictim].some(
-    (v) => v && v.role === "chasseur",
-  );
+  // ait eu lieu (sauf si les pouvoirs villageois sont désactivés, auquel
+  // cas la riposte n'aura jamais lieu).
+  const pendingHunter =
+    !state.villagePowersDisabled &&
+    [wolfDied ? wolfTarget : null, loverVictim, witchVictim].some(
+      (v) => v && v.role === "chasseur",
+    );
   const gameEnds = !pendingHunter && checkWinner(state.players) !== null;
 
   return `
@@ -538,9 +553,10 @@ function tplNightReveal() {
 </div>
 <button class="btn btn-ghost" id="toggle-victim-card">${state.showVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
 `
-        : `<div class="subtitle">La Sorcière a sauvé la victime des loups-garous cette nuit : personne n'est mort de leur attaque.</div>`
+        : `<div class="subtitle">Cette nuit, personne n'est mort de l'attaque des loups-garous.</div>`
     }
 
+    ${tplPowersDisabledNotice()}
     ${tplWitchVictim()}
     ${tplLoverCascade()}
 
@@ -608,6 +624,7 @@ function tplHunterVictimReveal(context) {
     </div>
     <button class="btn btn-ghost" id="toggle-hunter-victim-card">${state.showHunterVictimCard ? "Cacher la carte" : "Afficher sa carte"}</button>
 
+    ${tplPowersDisabledNotice()}
     ${tplLoverCascade()}
 
     <div style="height:8px"></div>
@@ -654,10 +671,12 @@ function tplDayReveal() {
     : null;
   // Si la victime (ou l'amoureux mort de chagrin) est le Chasseur, sa
   // riposte peut encore changer l'issue : ne pas annoncer "Voir le
-  // résultat" avant qu'elle ait eu lieu.
+  // résultat" avant qu'elle ait eu lieu (sauf pouvoirs villageois
+  // désactivés, la riposte n'aura alors jamais lieu).
   const gameEnds =
-    (!hasVictim || victim.role !== "chasseur") &&
-    (!cascadeVictim || cascadeVictim.role !== "chasseur") &&
+    (state.villagePowersDisabled ||
+      ((!hasVictim || victim.role !== "chasseur") &&
+        (!cascadeVictim || cascadeVictim.role !== "chasseur"))) &&
     checkWinner(state.players) !== null;
 
   return `
@@ -693,6 +712,7 @@ hasVictim
   : ""
     }
 
+    ${tplPowersDisabledNotice()}
     ${tplLoverCascade()}
 
     <label class="field-label">Survivants</label>
