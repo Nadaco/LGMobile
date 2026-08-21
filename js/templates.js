@@ -53,6 +53,15 @@ const SPECIAL_ROLES = [
   { key: "voleur", count: () => state.numVoleurs, max: 1 },
 ];
 
+// Préréglages du minuteur de débat, en secondes (0 = désactivé).
+const DEBATE_PRESETS = [
+  { seconds: 0, label: "Désactivé" },
+  { seconds: 60, label: "1 min" },
+  { seconds: 120, label: "2 min" },
+  { seconds: 180, label: "3 min" },
+  { seconds: 300, label: "5 min" },
+];
+
 function tplSetup() {
   const total = totalPlayers();
   return `
@@ -127,6 +136,18 @@ ${SPECIAL_ROLES.map((r) => {
   </div>
 `;
 })
+  .join("")}
+    </div>
+
+    <label class="field-label">Minuteur de débat (optionnel)</label>
+    <div class="role-chip-grid">
+${DEBATE_PRESETS.map(
+  (p) => `
+  <button class="role-chip ${state.debateDuration === p.seconds ? "active timer" : ""}" data-debate-duration="${p.seconds}">
+    <span class="chip-label">${p.label}</span>
+  </button>
+`,
+)
   .join("")}
     </div>
 
@@ -753,6 +774,25 @@ function tplHunterVictimReveal(context) {
   `;
 }
 
+// Minuteur de débat affiché en tête du vote de jour, purement indicatif :
+// n'empêche jamais de voter avant ou après la fin du temps imparti.
+// Absent (chaîne vide) si le meneur ne l'a pas activé en configuration.
+function tplDebateTimer() {
+  if (state.debateRemaining === null) return "";
+  const over = state.debateRemaining <= 0;
+  const m = Math.floor(state.debateRemaining / 60);
+  const s = state.debateRemaining % 60;
+  return `
+<div class="debate-timer ${over ? "over" : ""}">
+  <div class="debate-time" id="debate-time-value">${over ? "⏰ Temps écoulé" : `${m}:${String(s).padStart(2, "0")}`}</div>
+  <div class="debate-actions">
+    ${over ? "" : `<button class="btn btn-ghost debate-btn" id="debate-toggle">${state.debateRunning ? "⏸ Pause" : "▶ Reprendre"}</button>`}
+    <button class="btn btn-ghost debate-btn" id="debate-add-minute">+1 min</button>
+  </div>
+</div>
+`;
+}
+
 function tplDayVote() {
   const alive = state.players.filter((p) => p.alive);
   return `
@@ -761,6 +801,7 @@ function tplDayVote() {
     <div class="center-icon">🗳️</div>
     <h2 class="stitle">Le village vote</h2>
     <div class="subtitle">Discutez, puis désignez la personne que le village choisit d'éliminer.</div>
+    ${tplDebateTimer()}
     <div class="plist">
 ${alive
   .map(

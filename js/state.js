@@ -61,6 +61,9 @@ const DEFAULT_SETUP = {
   // Tout activé par défaut (avec les compteurs ci-dessus tous à 0, les
   // rôles uniques sont de toute façon tous disponibles au départ).
   voleurAllowedRoles: [...VALID_VOLEUR_ROLE_KEYS],
+  // Durée du minuteur de débat affiché pendant le vote de jour, en
+  // secondes ; 0 = désactivé (comportement historique, pas de minuteur).
+  debateDuration: 0,
 };
 
 function loadSetup() {
@@ -95,6 +98,7 @@ function saveSetup(setup) {
         numAnciens: setup.numAnciens,
         numVoleurs: setup.numVoleurs,
         voleurAllowedRoles: setup.voleurAllowedRoles,
+        debateDuration: setup.debateDuration,
       }),
     );
   } catch (e) {
@@ -129,6 +133,8 @@ let state = {
   dayTargetId: undefined,
   lastDayVictimId: null,
   showDayVictimCard: false,
+  debateRemaining: null, // secondes restantes au minuteur de débat, null si inactif
+  debateRunning: false,
   hunterQueue: [], // ids de Chasseurs morts qui doivent encore riposter
   hunterTargetId: null,
   hunterContext: null, // "night" | "day" — où renvoyer une fois la riposte résolue
@@ -423,6 +429,11 @@ function normalizeSetup(next) {
     next.voleurAllowedRoles ?? state.voleurAllowedRoles
   ).filter((r) => VALID_VOLEUR_ROLE_KEYS.includes(r));
 
+  const debateDuration = Math.max(
+    0,
+    next.debateDuration ?? state.debateDuration,
+  );
+
   const result = {
     numVillageois,
     numWolves,
@@ -434,6 +445,7 @@ function normalizeSetup(next) {
     numAnciens,
     numVoleurs,
     voleurAllowedRoles,
+    debateDuration,
   };
   saveSetup(result);
   return result;
@@ -581,6 +593,8 @@ function resetGame() {
     dayTargetId: undefined,
     lastDayVictimId: null,
     showDayVictimCard: false,
+    debateRemaining: null,
+    debateRunning: false,
     hunterQueue: [],
     hunterTargetId: null,
     hunterContext: null,

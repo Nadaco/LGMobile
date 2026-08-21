@@ -235,6 +235,9 @@ button.role-chip:active {
 .role-chip.active.loup {
   background: rgba(193, 69, 61, 0.25);
 }
+.role-chip.active.timer {
+  background: rgba(217, 169, 78, 0.28);
+}
 .role-chip-wrap {
   display: inline-flex;
   align-items: center;
@@ -530,6 +533,47 @@ label.field-label {
 }
 .lover-note strong {
   color: #ff8fb5;
+}
+
+/* Minuteur de débat (vote de jour) */
+.debate-timer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(217, 169, 78, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(217, 169, 78, 0.16),
+    rgba(217, 169, 78, 0.05)
+  );
+  margin: 0 0 16px;
+}
+.debate-timer .debate-time {
+  font-family: "Cinzel", serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.debate-timer.over .debate-time {
+  font-size: 15px;
+  color: var(--accent-blood-bright);
+}
+.debate-timer .debate-actions {
+  display: flex;
+  gap: 8px;
+}
+.debate-timer .debate-btn {
+  display: block;
+  width: auto;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 .divider-label {
   text-align: center;
