@@ -29,6 +29,9 @@ function render() {
     case "setup":
       html = tplSetup();
       break;
+    case "voleur_config":
+      html = tplVoleurConfig();
+      break;
     case "stats":
       html = tplStats();
       break;
@@ -40,6 +43,9 @@ function render() {
       break;
     case "night_sleep":
       html = tplNightSleep();
+      break;
+    case "night_voleur":
+      html = tplVoleur();
       break;
     case "night_cupidon":
       html = tplCupidon();
@@ -89,9 +95,13 @@ function render() {
   const fab = showFab
     ? `<button class="reveal-fab" id="revealFab" title="Voir toutes les cartes">🃏</button>`
     : "";
-  const showQuit = !["setup", "stats", "rules", "gameover"].includes(
-    state.phase,
-  );
+  const showQuit = ![
+    "setup",
+    "voleur_config",
+    "stats",
+    "rules",
+    "gameover",
+  ].includes(state.phase);
   const quitFab = showQuit
     ? `<button class="quit-fab" id="quitGameFab" title="Arrêter la partie">✕</button>`
     : "";
@@ -246,6 +256,7 @@ function wire() {
     cupidon: "numCupidons",
     sorciere: "numSorcieres",
     ancien: "numAnciens",
+    voleur: "numVoleurs",
   };
   app.querySelectorAll("[data-role-add]").forEach((el) => {
     el.onclick = () => {
@@ -271,6 +282,24 @@ function wire() {
       set(normalizeSetup({ [field]: 0 }));
     };
   });
+
+  // configuration des rôles piochables par le Voleur (écran ⚙️)
+  const voleurConfigOpen = app.querySelector("[data-voleur-config]");
+  if (voleurConfigOpen)
+    voleurConfigOpen.onclick = () => set({ phase: "voleur_config" });
+  app.querySelectorAll("[data-voleur-role-toggle]").forEach((el) => {
+    el.onclick = () => {
+      const role = el.getAttribute("data-voleur-role-toggle");
+      const voleurAllowedRoles = state.voleurAllowedRoles.includes(role)
+        ? state.voleurAllowedRoles.filter((r) => r !== role)
+        : [...state.voleurAllowedRoles, role];
+      set(normalizeSetup({ voleurAllowedRoles }));
+    };
+  });
+  const backFromVoleurConfig = app.querySelector("#back-from-voleur-config");
+  if (backFromVoleurConfig)
+    backFromVoleurConfig.onclick = () => set({ phase: "setup" });
+
   const viewStats = app.querySelector("#view-stats");
   if (viewStats) viewStats.onclick = () => set({ phase: "stats" });
   const backToSetup = app.querySelector("#back-to-setup");
@@ -299,6 +328,7 @@ function wire() {
         ...Array(state.numCupidons).fill("cupidon"),
         ...Array(state.numSorcieres).fill("sorciere"),
         ...Array(state.numAnciens).fill("ancien"),
+        ...Array(state.numVoleurs).fill("voleur"),
         ...Array(state.numVillageois).fill("villageois"),
       ]);
       set({
@@ -355,6 +385,7 @@ function wire() {
       const nextIndex = state.distributeIndex + 1;
       if (nextIndex >= state.deck.length) {
         rememberNames(newPlayers);
+        const hasVoleur = newPlayers.some((p) => p.role === "voleur");
         set({
           players: newPlayers,
           phase: "night_sleep",
@@ -362,6 +393,9 @@ function wire() {
           distributeIndex: nextIndex,
           revealed: false,
           nameInputVal: "",
+          voleurExtraRoles: hasVoleur
+            ? pickVoleurExtraRoles(newPlayers)
+            : [],
         });
       } else {
         set({
@@ -377,12 +411,51 @@ function wire() {
   const wakeWolves = app.querySelector("#wake-wolves");
   if (wakeWolves)
     wakeWolves.onclick = () => {
+      const voleurFirst =
+        state.round === 1 && state.players.some((p) => p.role === "voleur");
       const cupidonFirst =
+        !voleurFirst &&
         state.round === 1 &&
         state.lovers.length === 0 &&
         state.players.some((p) => p.role === "cupidon");
       set({
         targetId: null,
+        loverSelection: [],
+        voleurSelectedRole: null,
+        phase: voleurFirst
+          ? "night_voleur"
+          : cupidonFirst
+            ? "night_cupidon"
+            : "night_wolves",
+      });
+    };
+
+  // night voleur (nuit 1 uniquement) — échange sa carte contre l'un des
+  // deux rôles non distribués, ou reste Simple Villageois. Réévalue
+  // ensuite si Cupidon doit se réveiller (au cas où le Voleur devient
+  // Cupidon), sinon passe directement aux loups-garous.
+  app.querySelectorAll("[data-voleur-select]").forEach((el) => {
+    el.onclick = () => {
+      set({ voleurSelectedRole: el.getAttribute("data-voleur-select") });
+    };
+  });
+  const confirmVoleur = app.querySelector("#confirm-voleur");
+  if (confirmVoleur)
+    confirmVoleur.onclick = () => {
+      const voleurPlayer = state.players.find((p) => p.role === "voleur");
+      const chosenRole =
+        state.voleurSelectedRole === "none" ? null : state.voleurSelectedRole;
+      const players = chosenRole
+        ? state.players.map((p) =>
+            p.id === voleurPlayer.id ? { ...p, role: chosenRole } : p,
+          )
+        : state.players;
+      const cupidonFirst =
+        state.lovers.length === 0 &&
+        players.some((p) => p.role === "cupidon");
+      set({
+        players,
+        voleurSelectedRole: null,
         loverSelection: [],
         phase: cupidonFirst ? "night_cupidon" : "night_wolves",
       });

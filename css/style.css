@@ -229,6 +229,35 @@ button.role-chip:active {
 .role-chip.active.ancien {
   background: rgba(180, 150, 90, 0.32);
 }
+.role-chip.active.voleur {
+  background: rgba(70, 130, 130, 0.3);
+}
+.role-chip.active.loup {
+  background: rgba(193, 69, 61, 0.25);
+}
+.role-chip-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip-gear {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #12153080;
+  color: var(--text-light);
+  font-size: 14px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.chip-gear:active {
+  transform: scale(0.9);
+}
 .role-chip .chip-step {
   width: 22px;
   height: 22px;
@@ -376,6 +405,9 @@ button.role-chip:active {
 }
 .card-back.role-ancien {
   background: linear-gradient(160deg, #4d3d1f, #241a0e);
+}
+.card-back.role-voleur {
+  background: linear-gradient(160deg, #1a4d4d, #0e2424);
 }
 .card-back .glyph {
   font-size: 52px;
@@ -544,6 +576,10 @@ label.field-label {
 .rolebadge.ancien {
   background: rgba(180, 150, 90, 0.32);
   color: #e0c088;
+}
+.rolebadge.voleur {
+  background: rgba(70, 130, 130, 0.3);
+  color: #9fdede;
 }
 
 /* Aide-mémoire des rôles (écran "Voir tous les rôles") */

@@ -8,8 +8,10 @@
  *  - persistance localStorage : historique des parties, noms récents,
  *    configuration des rôles (nombre de chaque rôle choisi en configuration)
  *
- * Dépend de : ROLE_INFO (js/roles.js) — pas de dépendance directe ici,
- * mais computePlayerStats() se base sur les clés de rôle définies là-bas.
+ * Dépend de : ROLE_INFO (js/roles.js), chargé avant ce fichier — utilisé au
+ * chargement pour VALID_VOLEUR_ROLE_KEYS et par computePlayerStats() /
+ * pickVoleurExtraRoles() / voleurConfigurableRoles() pour les clés de rôle
+ * définies là-bas.
  * Appelle render() (défini dans js/app.js) après chaque changement d'état.
  */
 
@@ -22,6 +24,30 @@
 // dont l'initialiseur s'exécute avant sa propre déclaration textuelle ne
 // l'est pas (cas de STORAGE_KEYS plus bas), d'où ce bloc autonome.
 const SETUP_STORAGE_KEY = "lg_setup_v1";
+
+// Toutes les clés de rôle qu'un joueur Voleur peut potentiellement
+// recevoir (donc que state.voleurAllowedRoles peut légitimement contenir) :
+// tout sauf le Voleur lui-même et le Villageois (redondant, cf.
+// pickVoleurExtraRoles). Sert à valider/nettoyer les données persistées —
+// pour la liste réellement affichée/cochable dans l'écran ⚙️, voir
+// voleurConfigurableRoles() plus bas, qui varie selon la configuration en
+// cours.
+const VALID_VOLEUR_ROLE_KEYS = Object.keys(ROLE_INFO).filter(
+  (r) => r !== "voleur" && r !== "villageois",
+);
+
+// Association rôle unique -> champ de state qui compte sa présence en
+// configuration (0 = absent de la partie). Utilisée pour savoir si un rôle
+// unique (Voyante, Cupidon, Sorcière, L'Ancien) peut être proposé au Voleur :
+// seulement s'il n'est pas déjà coché dans la partie, cf.
+// voleurConfigurableRoles() et pickVoleurExtraRoles() plus bas.
+const UNIQUE_ROLE_SETUP_FIELDS = {
+  voyante: "numVoyantes",
+  cupidon: "numCupidons",
+  sorciere: "numSorcieres",
+  ancien: "numAnciens",
+};
+
 const DEFAULT_SETUP = {
   numVillageois: 4,
   numWolves: 1,
@@ -31,14 +57,24 @@ const DEFAULT_SETUP = {
   numCupidons: 0,
   numSorcieres: 0,
   numAnciens: 0,
+  numVoleurs: 0,
+  // Tout activé par défaut (avec les compteurs ci-dessus tous à 0, les
+  // rôles uniques sont de toute façon tous disponibles au départ).
+  voleurAllowedRoles: [...VALID_VOLEUR_ROLE_KEYS],
 };
 
 function loadSetup() {
   try {
     const raw = localStorage.getItem(SETUP_STORAGE_KEY);
-    return raw
+    const merged = raw
       ? { ...DEFAULT_SETUP, ...JSON.parse(raw) }
       : { ...DEFAULT_SETUP };
+    // Filtre les clés de rôle obsolètes qui auraient pu être sauvegardées
+    // par une version antérieure de ROLE_INFO.
+    merged.voleurAllowedRoles = (merged.voleurAllowedRoles || []).filter(
+      (r) => VALID_VOLEUR_ROLE_KEYS.includes(r),
+    );
+    return merged;
   } catch (e) {
     return { ...DEFAULT_SETUP };
   }
@@ -57,6 +93,8 @@ function saveSetup(setup) {
         numCupidons: setup.numCupidons,
         numSorcieres: setup.numSorcieres,
         numAnciens: setup.numAnciens,
+        numVoleurs: setup.numVoleurs,
+        voleurAllowedRoles: setup.voleurAllowedRoles,
       }),
     );
   } catch (e) {
@@ -78,6 +116,8 @@ let state = {
   lovers: [], // ids des deux amoureux désignés par Cupidon la nuit 1
   loverSelection: [], // sélection en cours pendant le tour de Cupidon
   lastLoverVictimId: null, // amoureux mort de chagrin lors de la dernière mort résolue
+  voleurExtraRoles: [], // les deux rôles non distribués proposés au Voleur la nuit 1
+  voleurSelectedRole: null, // sélection en cours pendant le tour du Voleur ("none" ou une clé de voleurExtraRoles)
   witchLifePotionUsed: false,
   witchDeathPotionUsed: false,
   witchStep: "life", // "life" | "death" — sous-écran affiché pendant le tour de la Sorcière
@@ -232,7 +272,8 @@ function totalPlayers() {
     state.numFilles +
     state.numCupidons +
     state.numSorcieres +
-    state.numAnciens
+    state.numAnciens +
+    state.numVoleurs
   );
 }
 
@@ -270,6 +311,10 @@ function normalizeSetup(next) {
     0,
     Math.min(1, next.numAnciens ?? state.numAnciens),
   );
+  let numVoleurs = Math.max(
+    0,
+    Math.min(1, next.numVoleurs ?? state.numVoleurs),
+  );
 
   const villageTeam = () =>
     numVillageois +
@@ -278,7 +323,8 @@ function normalizeSetup(next) {
     numFilles +
     numCupidons +
     numSorcieres +
-    numAnciens;
+    numAnciens +
+    numVoleurs;
 
   let total = villageTeam() + numWolves;
   if (total > 20) numVillageois = Math.max(0, numVillageois - (total - 20));
@@ -290,6 +336,9 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total > 20) {
     let overflow = total - 20;
+    const cutVoleurs = Math.min(numVoleurs, overflow);
+    numVoleurs -= cutVoleurs;
+    overflow -= cutVoleurs;
     const cutAnciens = Math.min(numAnciens, overflow);
     numAnciens -= cutAnciens;
     overflow -= cutAnciens;
@@ -314,6 +363,10 @@ function normalizeSetup(next) {
   total = villageTeam() + numWolves;
   if (total < 3) numVillageois += 3 - total;
 
+  const voleurAllowedRoles = (
+    next.voleurAllowedRoles ?? state.voleurAllowedRoles
+  ).filter((r) => VALID_VOLEUR_ROLE_KEYS.includes(r));
+
   const result = {
     numVillageois,
     numWolves,
@@ -323,9 +376,57 @@ function normalizeSetup(next) {
     numCupidons,
     numSorcieres,
     numAnciens,
+    numVoleurs,
+    voleurAllowedRoles,
   };
   saveSetup(result);
   return result;
+}
+
+// Rôles que l'écran ⚙️ propose de cocher/décocher pour le Voleur : les
+// rôles non uniques (Loup-Garou, Chasseur, Petite Fille...), toujours
+// affichés qu'ils soient en jeu ou non, + les rôles uniques (Voyante,
+// Cupidon, Sorcière, L'Ancien) mais SEULEMENT s'ils ne sont pas déjà
+// cochés dans la configuration de la partie (sinon ils seront de toute
+// façon distribués à un joueur, donc automatiquement exclus par
+// pickVoleurExtraRoles — aucun choix à faire ici pour eux).
+function voleurConfigurableRoles() {
+  const nonUnique = Object.keys(ROLE_INFO).filter(
+    (r) => r !== "voleur" && r !== "villageois" && !ROLE_INFO[r].unique,
+  );
+  const availableUnique = Object.keys(UNIQUE_ROLE_SETUP_FIELDS).filter(
+    (r) => state[UNIQUE_ROLE_SETUP_FIELDS[r]] === 0,
+  );
+  return [...nonUnique, ...availableUnique];
+}
+
+// Tire au hasard deux rôles non distribués à personne dans cette partie,
+// proposés au Voleur la première nuit. Exclut toujours le Voleur lui-même
+// (déjà distribué s'il est en jeu) et le Villageois (redondant : c'est déjà
+// ce qu'il devient s'il ne choisit aucune des deux cartes). Un rôle marqué
+// `unique: true` (Voyante, Cupidon, Sorcière, Ancien) n'est jamais candidat
+// s'il est déjà en jeu, même coché dans voleurAllowedRoles — sinon le
+// Voleur en créerait un second alors que le reste du code (potions de la
+// Sorcière, résistance de l'Ancien...) suppose un seul détenteur ; cette
+// exclusion-là n'est pas configurable. Au-delà de ça, tout rôle (unique ou
+// non) ne reste candidat que si le meneur l'a coché dans
+// state.voleurAllowedRoles (écran ⚙️ à côté de la puce Voleur). Si cette
+// sélection ne laisse pas deux rôles distincts, les cases manquantes sont
+// complétées par Villageois plutôt que d'ignorer le choix du meneur — un
+// choix neutre, équivalent à décliner.
+function pickVoleurExtraRoles(players) {
+  const usedRoles = new Set(players.map((p) => p.role));
+  const allowed = new Set(state.voleurAllowedRoles);
+  const notInPlayIfUnique = (r) => !ROLE_INFO[r].unique || !usedRoles.has(r);
+  const isCandidate = (r) =>
+    r !== "voleur" &&
+    r !== "villageois" &&
+    notInPlayIfUnique(r) &&
+    allowed.has(r);
+  const candidates = shuffle(Object.keys(ROLE_INFO).filter(isCandidate));
+  const picked = candidates.slice(0, 2);
+  while (picked.length < 2) picked.push("villageois");
+  return picked;
 }
 
 function checkWinner(players) {
@@ -411,6 +512,8 @@ function resetGame() {
     lovers: [],
     loverSelection: [],
     lastLoverVictimId: null,
+    voleurExtraRoles: [],
+    voleurSelectedRole: null,
     witchLifePotionUsed: false,
     witchDeathPotionUsed: false,
     witchStep: "life",
