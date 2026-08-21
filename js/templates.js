@@ -50,6 +50,7 @@ const SPECIAL_ROLES = [
   { key: "cupidon", count: () => state.numCupidons, max: 1 },
   { key: "sorciere", count: () => state.numSorcieres, max: 1 },
   { key: "ancien", count: () => state.numAnciens, max: 1 },
+  { key: "voleur", count: () => state.numVoleurs, max: 1 },
 ];
 
 function tplSetup() {
@@ -100,11 +101,20 @@ ${SPECIAL_ROLES.map((r) => {
 `;
   }
   if (r.max === 1) {
-    return `
+    const chip = `
   <button class="role-chip active ${info.cls}" data-role-remove="${r.key}">
     <span class="chip-glyph">${info.glyph}</span>
     <span class="chip-label">${info.label}</span>
   </button>
+`;
+    // Le Voleur pioche parmi des rôles non uniques configurables : un
+    // engrenage à côté de sa puce ouvre l'écran dédié (tplVoleurConfig).
+    if (r.key !== "voleur") return chip;
+    return `
+  <div class="role-chip-wrap">
+    ${chip}
+    <button class="chip-gear" data-voleur-config title="Rôles piochables par le Voleur">⚙️</button>
+  </div>
 `;
   }
   return `
@@ -125,6 +135,30 @@ ${SPECIAL_ROLES.map((r) => {
     <button class="btn btn-primary" id="start-distribute">Commencer la distribution des rôles</button>
     <button class="btn btn-ghost" id="view-rules" style="margin-top:12px;">Voir tous les rôles</button>
     ${getHistory().length > 0 ? `<button class="btn btn-ghost" id="view-stats" style="margin-top:12px;">Statistiques &amp; historique</button>` : ""}
+  `;
+}
+
+function tplVoleurConfig() {
+  const roles = voleurConfigurableRoles();
+  return `
+    ${moonSvg("calm")}
+    <div class="eyebrow">Configuration du Voleur</div>
+    <h2 class="stitle">Rôles piochables</h2>
+    <div class="subtitle">Rôles que le Voleur peut piocher au hasard la première nuit. Les rôles non uniques restent proposables même s'ils sont déjà distribués à un joueur ; les rôles uniques (Voyante, Cupidon, Sorcière, L'Ancien) n'apparaissent ici que s'ils ne sont pas déjà cochés dans la partie — sinon ils y seront de toute façon, donc automatiquement exclus. Décochez ceux que vous ne voulez pas lui proposer.</div>
+    <div class="role-chip-grid">
+${roles.map((key) => {
+  const info = ROLE_INFO[key];
+  const enabled = state.voleurAllowedRoles.includes(key);
+  return `
+  <button class="role-chip ${enabled ? `active ${info.cls}` : ""}" data-voleur-role-toggle="${key}">
+    <span class="chip-glyph">${info.glyph}</span>
+    <span class="chip-label">${info.label}</span>
+  </button>
+`;
+})
+  .join("")}
+    </div>
+    <button class="btn btn-primary" id="back-from-voleur-config">Retour</button>
   `;
 }
 
@@ -284,7 +318,13 @@ ${getRecentNames()
 }
 
 function tplNightSleep() {
+  // Le Voleur agit avant tout le monde la nuit 1 : s'il vole le rôle de
+  // Cupidon ou d'un Loup-Garou, il doit pouvoir enchaîner sur leur tour
+  // dans la foulée (voir wake-wolves dans js/app.js).
+  const voleurFirst =
+    state.round === 1 && state.players.some((p) => p.role === "voleur");
   const cupidonFirst =
+    !voleurFirst &&
     state.round === 1 &&
     state.lovers.length === 0 &&
     state.players.some((p) => p.role === "cupidon");
@@ -294,7 +334,36 @@ function tplNightSleep() {
     <div class="center-icon">🌙</div>
     <h2 class="stitle">Le village s'endort...</h2>
     <div class="subtitle">Tout le monde ferme les yeux. Le maître du jeu garde le téléphone.</div>
-    <button class="btn btn-primary" id="wake-wolves">${cupidonFirst ? "Cupidon se réveille" : "Les loups-garous se réveillent"}</button>
+    <button class="btn btn-primary" id="wake-wolves">${voleurFirst ? "Le Voleur se réveille" : cupidonFirst ? "Cupidon se réveille" : "Les loups-garous se réveillent"}</button>
+  `;
+}
+
+function tplVoleur() {
+  const [roleAKey, roleBKey] = state.voleurExtraRoles;
+  const roleA = ROLE_INFO[roleAKey];
+  const roleB = ROLE_INFO[roleBKey];
+  const selected = state.voleurSelectedRole;
+  return `
+    ${moonSvg("night")}
+    <div class="eyebrow">Nuit ${state.round}</div>
+    <div class="center-icon">🗡️</div>
+    <h2 class="stitle">Le Voleur se réveille</h2>
+    <div class="subtitle">Il découvre deux rôles non distribués à personne et peut échanger sa carte contre l'un des deux. Le maître du jeu lui montre ces deux cartes en secret et enregistre son choix ci-dessous.</div>
+    <div class="plist">
+  <div class="pitem ${selected === roleAKey ? "selected" : ""}" data-voleur-select="${roleAKey}">
+    <div class="dot"></div>
+    <div class="name">${roleA.glyph} ${roleA.label}</div>
+  </div>
+  <div class="pitem ${selected === roleBKey ? "selected" : ""}" data-voleur-select="${roleBKey}">
+    <div class="dot"></div>
+    <div class="name">${roleB.glyph} ${roleB.label}</div>
+  </div>
+  <div class="pitem pitem-none ${selected === "none" ? "selected" : ""}" data-voleur-select="none">
+    <div class="dot"></div>
+    <div class="name">Rester Simple Villageois</div>
+  </div>
+    </div>
+    <button class="btn btn-primary" id="confirm-voleur" ${selected === null ? "disabled" : ""}>Confirmer le choix</button>
   `;
 }
 
