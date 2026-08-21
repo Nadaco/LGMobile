@@ -6,7 +6,10 @@
  *  - `set()` / `resetGame()` : les seules façons de modifier `state`
  *  - helpers de jeu : shuffle, totalPlayers, normalizeSetup, checkWinner
  *  - persistance localStorage : historique des parties, noms récents,
- *    configuration des rôles (nombre de chaque rôle choisi en configuration)
+ *    configuration des rôles (nombre de chaque rôle choisi en configuration),
+ *    et la partie en cours elle-même (voir saveGameState/loadGameState) —
+ *    pour survivre à un rechargement accidentel ou à l'app tuée par l'OS
+ *    en pleine partie sur mobile, `set()` la sauvegarde à chaque appel.
  *
  * Dépend de : ROLE_INFO (js/roles.js), chargé avant ce fichier — utilisé au
  * chargement pour VALID_VOLEUR_ROLE_KEYS et par computePlayerStats() /
@@ -24,6 +27,12 @@
 // dont l'initialiseur s'exécute avant sa propre déclaration textuelle ne
 // l'est pas (cas de STORAGE_KEYS plus bas), d'où ce bloc autonome.
 const SETUP_STORAGE_KEY = "lg_setup_v1";
+const GAME_STORAGE_KEY = "lg_game_v1";
+
+// Écrans qui ne représentent pas une partie en cours (configuration,
+// aide-mémoire, statistiques) : rien à sauvegarder/restaurer tant qu'on y
+// est, cf. saveGameState()/loadGameState() plus bas.
+const NO_ACTIVE_GAME_PHASES = ["setup", "stats", "rules", "voleur_config"];
 
 // Toutes les clés de rôle qu'un joueur Voleur peut potentiellement
 // recevoir (donc que state.voleurAllowedRoles peut légitimement contenir) :
@@ -106,47 +115,96 @@ function saveSetup(setup) {
   }
 }
 
-let state = {
-  phase: "setup",
-  ...loadSetup(),
-  deck: [],
-  players: [], // {id, name, role, alive}
-  distributeIndex: 0,
-  revealed: false,
-  round: 1,
-  targetId: null,
-  lastVictimId: null,
-  showVictimCard: false,
-  lovers: [], // ids des deux amoureux désignés par Cupidon la nuit 1
-  loverSelection: [], // sélection en cours pendant le tour de Cupidon
-  lastLoverVictimId: null, // amoureux mort de chagrin lors de la dernière mort résolue
-  voleurExtraRoles: [], // les deux rôles non distribués proposés au Voleur la nuit 1
-  voleurSelectedRole: null, // sélection en cours pendant le tour du Voleur ("none" ou une clé de voleurExtraRoles)
-  witchLifePotionUsed: false,
-  witchDeathPotionUsed: false,
-  witchStep: "life", // "life" | "death" — sous-écran affiché pendant le tour de la Sorcière
-  witchDeathTargetId: null,
-  lastWitchVictimId: null, // joueur empoisonné par la Sorcière la dernière nuit
-  voyanteQueue: [], // ids des voyantes qui n'ont pas encore regardé une carte cette nuit
-  voyanteTargetId: null,
-  voyanteRevealed: false,
-  dayTargetId: undefined,
-  lastDayVictimId: null,
-  showDayVictimCard: false,
-  debateRemaining: null, // secondes restantes au minuteur de débat, null si inactif
-  debateRunning: false,
-  hunterQueue: [], // ids de Chasseurs morts qui doivent encore riposter
-  hunterTargetId: null,
-  hunterContext: null, // "night" | "day" — où renvoyer une fois la riposte résolue
-  lastHunterVictimId: null,
-  showHunterVictimCard: false,
-  ancienExtraLifeUsed: false, // l'Ancien a déjà résisté à une attaque des loups
-  villagePowersDisabled: false, // l'Ancien est mort par le vote/un pouvoir : plus aucun pouvoir villageois
-  ancienPowersJustDisabled: false, // notice transitoire, affichée une fois puis effacée
-  showAllCards: false,
-  confirmDialog: null, // { message, action } — confirmation en place, pas de window.confirm()
-  winner: null,
-};
+// Sauvegarde/restauration de la partie en cours (au-delà de la simple
+// configuration des rôles), pour survivre à un rechargement accidentel ou
+// à l'app tuée par l'OS en pleine partie sur mobile. `set()` appelle
+// saveGameState() à chaque changement d'état ; seules les phases hors
+// partie active (NO_ACTIVE_GAME_PHASES) ne sont pas sauvegardées, et
+// resetGame() efface explicitement toute sauvegarde existante.
+function saveGameState(s) {
+  if (NO_ACTIVE_GAME_PHASES.includes(s.phase)) {
+    clearGameState();
+    return;
+  }
+  try {
+    localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(s));
+  } catch (e) {
+    /* storage unavailable, ignore */
+  }
+}
+
+function clearGameState() {
+  try {
+    localStorage.removeItem(GAME_STORAGE_KEY);
+  } catch (e) {
+    /* storage unavailable, ignore */
+  }
+}
+
+// Renvoie la partie sauvegardée si elle est exploitable (une vraie partie
+// en cours, pas un écran de configuration), sinon null. Les overlays
+// transitoires (dialogue de confirmation, aperçu "toutes les cartes")
+// ne sont volontairement jamais restaurés ouverts.
+function loadGameState() {
+  try {
+    const raw = localStorage.getItem(GAME_STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || NO_ACTIVE_GAME_PHASES.includes(saved.phase)) return null;
+    return { ...saved, confirmDialog: null, showAllCards: false };
+  } catch (e) {
+    return null;
+  }
+}
+
+// État "vide" d'une partie non commencée, regroupé dans une fonction pour
+// que l'état initial et resetGame() ne puissent pas diverger (les deux
+// s'en servent) — un champ ajouté ici l'est automatiquement aux deux.
+function defaultGameState() {
+  return {
+    phase: "setup",
+    ...loadSetup(),
+    deck: [],
+    players: [], // {id, name, role, alive}
+    distributeIndex: 0,
+    revealed: false,
+    round: 1,
+    targetId: null,
+    lastVictimId: null,
+    showVictimCard: false,
+    lovers: [], // ids des deux amoureux désignés par Cupidon la nuit 1
+    loverSelection: [], // sélection en cours pendant le tour de Cupidon
+    lastLoverVictimId: null, // amoureux mort de chagrin lors de la dernière mort résolue
+    voleurExtraRoles: [], // les deux rôles non distribués proposés au Voleur la nuit 1
+    voleurSelectedRole: null, // sélection en cours pendant le tour du Voleur ("none" ou une clé de voleurExtraRoles)
+    witchLifePotionUsed: false,
+    witchDeathPotionUsed: false,
+    witchStep: "life", // "life" | "death" — sous-écran affiché pendant le tour de la Sorcière
+    witchDeathTargetId: null,
+    lastWitchVictimId: null, // joueur empoisonné par la Sorcière la dernière nuit
+    voyanteQueue: [], // ids des voyantes qui n'ont pas encore regardé une carte cette nuit
+    voyanteTargetId: null,
+    voyanteRevealed: false,
+    dayTargetId: undefined,
+    lastDayVictimId: null,
+    showDayVictimCard: false,
+    debateRemaining: null, // secondes restantes au minuteur de débat, null si inactif
+    debateRunning: false,
+    hunterQueue: [], // ids de Chasseurs morts qui doivent encore riposter
+    hunterTargetId: null,
+    hunterContext: null, // "night" | "day" — où renvoyer une fois la riposte résolue
+    lastHunterVictimId: null,
+    showHunterVictimCard: false,
+    ancienExtraLifeUsed: false, // l'Ancien a déjà résisté à une attaque des loups
+    villagePowersDisabled: false, // l'Ancien est mort par le vote/un pouvoir : plus aucun pouvoir villageois
+    ancienPowersJustDisabled: false, // notice transitoire, affichée une fois puis effacée
+    showAllCards: false,
+    confirmDialog: null, // { message, action } — confirmation en place, pas de window.confirm()
+    winner: null,
+  };
+}
+
+let state = loadGameState() || defaultGameState();
 
 function normalizeName(name) {
   return (name || "").trim().toLowerCase();
@@ -562,51 +620,13 @@ function actingRoleIds(role) {
 
 function set(partial) {
   state = { ...state, ...partial };
+  saveGameState(state);
   render();
 }
 
 function resetGame() {
-  state = {
-    phase: "setup",
-    ...loadSetup(),
-    deck: [],
-    players: [],
-    distributeIndex: 0,
-    revealed: false,
-    round: 1,
-    targetId: null,
-    lastVictimId: null,
-    showVictimCard: false,
-    lovers: [],
-    loverSelection: [],
-    lastLoverVictimId: null,
-    voleurExtraRoles: [],
-    voleurSelectedRole: null,
-    witchLifePotionUsed: false,
-    witchDeathPotionUsed: false,
-    witchStep: "life",
-    witchDeathTargetId: null,
-    lastWitchVictimId: null,
-    voyanteQueue: [],
-    voyanteTargetId: null,
-    voyanteRevealed: false,
-    dayTargetId: undefined,
-    lastDayVictimId: null,
-    showDayVictimCard: false,
-    debateRemaining: null,
-    debateRunning: false,
-    hunterQueue: [],
-    hunterTargetId: null,
-    hunterContext: null,
-    lastHunterVictimId: null,
-    showHunterVictimCard: false,
-    ancienExtraLifeUsed: false,
-    villagePowersDisabled: false,
-    ancienPowersJustDisabled: false,
-    showAllCards: false,
-    confirmDialog: null,
-    winner: null,
-  };
+  clearGameState();
+  state = defaultGameState();
   render();
 }
 

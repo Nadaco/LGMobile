@@ -852,6 +852,11 @@ setInterval(() => {
     set({ debateRemaining: 0, debateRunning: false });
     return;
   }
+  // set() est court-circuité ci-dessus pour éviter un rendu complet chaque
+  // seconde, mais la sauvegarde de la partie en cours (voir state.js)
+  // reste à jour : un simple localStorage.setItem() ne provoque aucun
+  // clignotement, contrairement à render().
+  saveGameState(state);
   const timeEl = document.getElementById("debate-time-value");
   if (!timeEl) {
     render();
