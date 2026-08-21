@@ -535,11 +535,14 @@ function tplNightVoyanteSleep() {
 
 // Petit bloc "mort annexe" (annoncé sans mise en scène ni choix à faire,
 // contrairement au Chasseur) : amoureux mort de chagrin, ou victime de la
-// potion de mort de la Sorcière.
-function tplExtraDeath(label, player) {
+// potion de mort de la Sorcière. `note`, optionnel, affiche une phrase
+// d'explication mise en avant au-dessus de la liste (utilisé pour nommer
+// l'amoureux dont la mort a causé ce chagrin).
+function tplExtraDeath(label, player, note) {
   if (!player) return "";
   const info = ROLE_INFO[player.role];
   return `
+${note ? `<div class="lover-note">${note}</div>` : ""}
 <label class="field-label">${label}</label>
 <div class="roster">
   <div class="ritem dead">
@@ -551,12 +554,25 @@ function tplExtraDeath(label, player) {
 }
 
 function tplLoverCascade() {
-  const lover = state.lastLoverVictimId
-    ? state.players.find((p) => p.id === state.lastLoverVictimId)
+  const loverId = state.lastLoverVictimId;
+  const lover = loverId
+    ? state.players.find((p) => p.id === loverId)
     : null;
+  // L'autre moitié du couple est le second id de state.lovers : c'est sa
+  // mort (déjà annoncée plus haut sur cet écran, quelle qu'en soit la
+  // cause) qui provoque celle-ci par chagrin.
+  const partnerId = lover
+    ? state.lovers.find((id) => id !== loverId)
+    : null;
+  const partner =
+    partnerId != null ? state.players.find((p) => p.id === partnerId) : null;
+  const note = partner
+    ? `💘 <strong>${escapeHtml(lover.name)}</strong> était amoureux·se de <strong>${escapeHtml(partner.name)}</strong> : en apprenant sa mort, il/elle meurt de chagrin à son tour.`
+    : "";
   return tplExtraDeath(
     "Mort·e de chagrin",
     lover && { ...lover, name: `💘 ${lover.name}` },
+    note,
   );
 }
 
