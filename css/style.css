@@ -24,7 +24,6 @@
 }
 html,
 body {
-  height: 100%;
   margin: 0;
 }
 body {
@@ -33,7 +32,12 @@ body {
     radial-gradient(ellipse at 50% -10%, #262c5e 0%, transparent 55%),
     linear-gradient(180deg, var(--bg-night) 0%, #08091a 100%);
   color: var(--text-light);
+  /* min-height (pas height) : sur un écran court le body reste centré à
+     100vh, mais s'il y a plus de contenu que ça (ex. l'écran des rôles
+     avec 8 fiches), le body grandit avec lui au lieu de le laisser
+     déborder de façon inatteignable au scroll des deux côtés à la fois. */
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
