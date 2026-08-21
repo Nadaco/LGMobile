@@ -193,12 +193,48 @@ ${roles
 
 function tplStats() {
   const stats = computePlayerStats();
+  const overview = computeOverviewStats();
+  const roleStats = computeRoleStats();
   const history = getHistory();
   return `
     ${moonSvg("calm")}
     <div class="eyebrow">Sur cet appareil</div>
     <h2 class="stitle">Statistiques</h2>
     <div class="subtitle">${history.length} partie${history.length > 1 ? "s" : ""} enregistrée${history.length > 1 ? "s" : ""} localement.</div>
+
+    <label class="field-label">Aperçu</label>
+    <div class="roster">
+${
+  overview
+    ? `
+  <div class="ritem"><span>Partie la plus longue</span><span class="sub" style="margin-top:0;">${overview.longestRound} nuit${overview.longestRound > 1 ? "s" : ""}</span></div>
+  <div class="ritem"><span>Durée moyenne</span><span class="sub" style="margin-top:0;">${overview.avgRound} nuit${overview.avgRound > 1 ? "s" : ""}</span></div>
+  <div class="ritem"><span>Victoires Village</span><span class="rolebadge villageois">${overview.villagePct}%</span></div>
+  <div class="ritem"><span>Victoires Loups</span><span class="rolebadge loup">${overview.loupsPct}%</span></div>
+  <div class="ritem"><span>Victoires Amoureux</span><span class="rolebadge cupidon">${overview.amoureuxPct}%</span></div>
+`
+    : `<div class="ritem"><span class="sub" style="margin-top:0;">Aucune donnée pour le moment</span></div>`
+}
+    </div>
+
+    <label class="field-label">Taux de victoire par rôle</label>
+    <div class="roster">
+${
+  roleStats.length
+    ? roleStats
+        .map((r) => {
+          const info = ROLE_INFO[r.role];
+          return `
+  <div class="ritem">
+    <span>${info.glyph} ${info.label}</span>
+    <span class="sub" style="margin-top:0;">${r.rate}% · ${r.games} partie${r.games > 1 ? "s" : ""}</span>
+  </div>
+`;
+        })
+        .join("")
+    : `<div class="ritem"><span class="sub" style="margin-top:0;">Aucune donnée pour le moment</span></div>`
+}
+    </div>
 
     <label class="field-label">Classement des joueurs</label>
     <div class="roster">

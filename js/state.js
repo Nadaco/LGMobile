@@ -248,6 +248,58 @@ function computePlayerStats() {
     .sort((a, b) => b.games - a.games || b.wins - a.wins);
 }
 
+// Vue d'ensemble de l'historique : durée des parties et répartition des
+// victoires par camp. `null` si aucune partie n'est enregistrée.
+function computeOverviewStats() {
+  const history = getHistory();
+  const totalGames = history.length;
+  if (totalGames === 0) return null;
+  const rounds = history.map((g) => g.round);
+  const longestRound = Math.max(...rounds);
+  const avgRound =
+    Math.round((rounds.reduce((a, b) => a + b, 0) / totalGames) * 10) / 10;
+  const pct = (winner) =>
+    Math.round(
+      (history.filter((g) => g.winner === winner).length / totalGames) * 100,
+    );
+  return {
+    totalGames,
+    longestRound,
+    avgRound,
+    villagePct: pct("villageois"),
+    loupsPct: pct("loups-garous"),
+    amoureuxPct: pct("amoureux"),
+  };
+}
+
+// Taux de victoire par rôle, toutes parties confondues : pour un rôle
+// donné, proportion des parties où le camp de ce rôle (ou les amoureux,
+// pour un joueur y ayant figuré) l'a emporté. Triés par nombre
+// d'apparitions décroissant.
+function computeRoleStats() {
+  const history = getHistory();
+  const stats = {}; // role -> {games, wins}
+  history.forEach((g) => {
+    g.players.forEach((p) => {
+      if (!stats[p.role]) stats[p.role] = { games: 0, wins: 0 };
+      stats[p.role].games++;
+      const team = ROLE_INFO[p.role].team;
+      const won =
+        (g.winner === "villageois" && team === "village") ||
+        (g.winner === "loups-garous" && team === "loups") ||
+        (g.winner === "amoureux" && g.lovers && g.lovers.includes(p.name));
+      if (won) stats[p.role].wins++;
+    });
+  });
+  return Object.entries(stats)
+    .map(([role, s]) => ({
+      role,
+      ...s,
+      rate: s.games ? Math.round((s.wins / s.games) * 100) : 0,
+    }))
+    .sort((a, b) => b.games - a.games || b.rate - a.rate);
+}
+
 function clearHistory() {
   saveJSON(STORAGE_KEYS.history, []);
 }
