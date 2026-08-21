@@ -334,6 +334,57 @@ test("normalizeSetup", "durée du minuteur de débat conservée telle quelle sin
   assertEqual(r.debateDuration, 180);
 });
 
+/* ---------- persistance de la partie en cours ---------- */
+
+test(
+  "saveGameState / loadGameState",
+  "une phase de partie active est sauvegardée puis restaurée à l'identique",
+  () => {
+    const saved = { phase: "night_wolves", round: 2, targetId: 3, players: [] };
+    saveGameState(saved);
+    const loaded = loadGameState();
+    assertEqual(loaded.phase, "night_wolves");
+    assertEqual(loaded.round, 2);
+    assertEqual(loaded.targetId, 3);
+  },
+);
+
+test(
+  "saveGameState / loadGameState",
+  "les overlays transitoires ne sont jamais restaurés ouverts",
+  () => {
+    saveGameState({
+      phase: "day_vote",
+      confirmDialog: { message: "test", action: "quit-game" },
+      showAllCards: true,
+    });
+    const loaded = loadGameState();
+    assertEqual(loaded.confirmDialog, null);
+    assertEqual(loaded.showAllCards, false);
+  },
+);
+
+test(
+  "saveGameState / loadGameState",
+  "les écrans hors partie (setup, stats, rules, voleur_config) ne sont jamais sauvegardés",
+  () => {
+    NO_ACTIVE_GAME_PHASES.forEach((phase) => {
+      saveGameState({ phase, round: 5 });
+      assert(
+        loadGameState() === null,
+        `la phase "${phase}" n'aurait pas dû être sauvegardée`,
+      );
+    });
+  },
+);
+
+test("resetGame", "efface toute partie sauvegardée", () => {
+  saveGameState({ phase: "night_wolves", round: 3 });
+  resetGame();
+  assertEqual(loadGameState(), null);
+  assertEqual(state.phase, "setup");
+});
+
 /* ---------- rendu des résultats ---------- */
 
 const summaryEl = document.getElementById("summary");
