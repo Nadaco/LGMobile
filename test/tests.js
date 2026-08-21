@@ -48,6 +48,7 @@ function baseSetup(overrides) {
       numAnciens: 0,
       numVoleurs: 0,
       voleurAllowedRoles: [...VALID_VOLEUR_ROLE_KEYS],
+      debateDuration: 0,
     },
     overrides || {},
   );
@@ -319,6 +320,18 @@ test("normalizeSetup", "persiste le résultat en localStorage", () => {
   const r = normalizeSetup({ numVillageois: 6 });
   const stored = JSON.parse(localStorage.getItem(SETUP_STORAGE_KEY));
   assertEqual(stored.numVillageois, r.numVillageois);
+});
+
+test("normalizeSetup", "durée du minuteur de débat jamais négative", () => {
+  baseSetup();
+  const r = normalizeSetup({ debateDuration: -30 });
+  assertEqual(r.debateDuration, 0);
+});
+
+test("normalizeSetup", "durée du minuteur de débat conservée telle quelle sinon", () => {
+  baseSetup();
+  const r = normalizeSetup({ debateDuration: 180 });
+  assertEqual(r.debateDuration, 180);
 });
 
 /* ---------- rendu des résultats ---------- */

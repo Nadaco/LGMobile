@@ -152,6 +152,10 @@ function finishRoundPartial(context, players) {
       phase: "day_vote",
       dayTargetId: undefined,
       ancienPowersJustDisabled: false,
+      // Minuteur de débat optionnel (0 = désactivé, voir setup) : démarre
+      // automatiquement à chaque nouveau vote de jour.
+      debateRemaining: state.debateDuration > 0 ? state.debateDuration : null,
+      debateRunning: state.debateDuration > 0,
     };
   }
   return {
@@ -280,6 +284,14 @@ function wire() {
     el.onclick = () => {
       const field = SPECIAL_ROLE_FIELDS[el.getAttribute("data-role-remove")];
       set(normalizeSetup({ [field]: 0 }));
+    };
+  });
+
+  // minuteur de débat (durée choisie en configuration parmi des préréglages)
+  app.querySelectorAll("[data-debate-duration]").forEach((el) => {
+    el.onclick = () => {
+      const seconds = Number(el.getAttribute("data-debate-duration"));
+      set(normalizeSetup({ debateDuration: seconds }));
     };
   });
 
@@ -691,6 +703,16 @@ function wire() {
     };
 
   // day vote
+  const debateToggle = app.querySelector("#debate-toggle");
+  if (debateToggle)
+    debateToggle.onclick = () => set({ debateRunning: !state.debateRunning });
+  const debateAddMinute = app.querySelector("#debate-add-minute");
+  if (debateAddMinute)
+    debateAddMinute.onclick = () =>
+      set({
+        debateRemaining: (state.debateRemaining || 0) + 60,
+        debateRunning: true,
+      });
   app.querySelectorAll("[data-dayvote]").forEach((el) => {
     el.onclick = () => {
       const v = el.getAttribute("data-dayvote");
@@ -801,6 +823,44 @@ function wire() {
 }
 
 render();
+
+// Minuteur de débat (vote de jour) : une seule minuterie globale, démarrée
+// une fois au chargement. Elle ne fait quelque chose que pendant la phase
+// day_vote, quand debateRunning est vrai et qu'il reste du temps — sinon
+// ce tick ne coûte qu'une comparaison, pas besoin de la démarrer/arrêter
+// à chaque changement de phase.
+//
+// Exception délibérée à la règle "set() est la seule façon de modifier
+// state" (voir en-tête de state.js) : passer par set() ici reconstruirait
+// tout l'écran (app.innerHTML = ...) chaque seconde, ce qui se voit comme
+// un clignotement/rafraîchissement de la page. On modifie donc
+// state.debateRemaining directement et on ne patch que le texte du
+// minuteur dans le DOM ; state reste la source de vérité pour tout rendu
+// complet déclenché par ailleurs (n'importe quelle autre interaction).
+// Un rendu complet reste utilisé quand la structure de l'écran doit
+// changer (le bouton Pause disparaît une fois le temps écoulé).
+setInterval(() => {
+  if (
+    state.phase !== "day_vote" ||
+    !state.debateRunning ||
+    state.debateRemaining <= 0
+  ) {
+    return;
+  }
+  state.debateRemaining -= 1;
+  if (state.debateRemaining <= 0) {
+    set({ debateRemaining: 0, debateRunning: false });
+    return;
+  }
+  const timeEl = document.getElementById("debate-time-value");
+  if (!timeEl) {
+    render();
+    return;
+  }
+  const m = Math.floor(state.debateRemaining / 60);
+  const s = state.debateRemaining % 60;
+  timeEl.textContent = `${m}:${String(s).padStart(2, "0")}`;
+}, 1000);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
