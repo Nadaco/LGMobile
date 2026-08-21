@@ -410,7 +410,11 @@ function normalizeSetup(next) {
     numVoyantes -= cutVoyantes;
   }
 
-  numWolves = Math.min(numWolves, Math.max(1, villageTeam()));
+  // Strictement inférieurs au reste du village (cf. commentaire ci-dessus),
+  // pas seulement plafonnés à son effectif : un nombre égal démarrerait la
+  // partie déjà perdue pour le village (checkWinner considère les loups
+  // vainqueurs dès qu'ils sont aussi nombreux ou plus).
+  numWolves = Math.min(numWolves, Math.max(1, villageTeam() - 1));
 
   total = villageTeam() + numWolves;
   if (total < 3) numVillageois += 3 - total;
